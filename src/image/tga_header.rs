@@ -5,18 +5,18 @@ pub const UNMAPPED_RGB: u8 = 2u8;
 
 #[derive(Default)]
 pub struct TGAHeader {
-    _id_length: u8,
-    _colormap_type: u8,
+    id_length: u8,
+    colormap_type: u8,
     data_type_code: u8,
-    _color_map_origin: u16,
-    _color_map_length: u16,
-    _color_map_depth: u8,
-    _x_origin: u16,
-    _y_origin: u16,
+    colormap_origin: u16,
+    colormap_length: u16,
+    colormap_depth: u8,
+    x_origin: u16,
+    y_origin: u16,
     width: u16,
     height: u16,
     bits_per_pixel: u8,
-    _image_descriptor: u8,
+    image_descriptor: u8,
 }
 
 impl TGAHeader {
@@ -28,4 +28,83 @@ impl TGAHeader {
         header.bits_per_pixel = pixel::BITS_IN_RGB_PIXEL;
         header
     }
+
+    pub fn get_bytes(&self) -> [u8; 18] {
+        [
+            self.id_length,
+            self.colormap_type,
+            self.data_type_code,
+            get_low_bits(self.colormap_length),
+            get_high_bits(self.colormap_length),
+            get_low_bits(self.colormap_origin),
+            get_high_bits(self.colormap_origin),
+            self.colormap_depth,
+            get_low_bits(self.x_origin),
+            get_high_bits(self.x_origin),
+            get_low_bits(self.y_origin),
+            get_high_bits(self.y_origin),
+            get_low_bits(self.width),
+            get_high_bits(self.width),
+            get_low_bits(self.height),
+            get_high_bits(self.height),
+            self.bits_per_pixel,
+            self.image_descriptor
+        ]
+    }
+
+
+}
+
+fn get_low_bits(bit_field: u16) -> u8 {
+    bit_field as u8
+}
+
+fn get_high_bits(bit_field: u16) -> u8 {
+    (bit_field >> 8) as u8
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn get_low_bits_works() {
+        let bit_field = 0b1111_1111_0000_0000u16;
+        assert_eq!(get_low_bits(bit_field), 0b0000_0000u8);
+    }
+
+    #[test]
+    fn get_high_bits_works() {
+        let bit_field = 0b1111_1111_0000_0000u16;
+        assert_eq!(get_high_bits(bit_field), 0b1111_1111u8);
+    }
+
+    #[test]
+    fn get_rgb_header_bytes_work() {
+        let bytes = TGAHeader::get_rgb_header(1, 1).get_bytes();
+        assert_eq!(
+            bytes,
+            [
+                0u8, // id_length       u8
+                0u8, // colormap type   u8
+                2u8, // data_type_code  u8
+                0u8, // colormap_origin u16
+                0u8, // colormap_origin u16
+                0u8, // colormap_length u16
+                0u8, // colormap_length u16
+                0u8, // colormap_depth  u8
+                0u8, // x_origin        u16
+                0u8, // x_origin        u16
+                0u8, // y_origin        u16
+                0u8, // y_origin        u16
+                1u8, // width           u16
+                0u8, // width           u16
+                1u8, // height          u16
+                0u8, // height          u16
+                24u8, // bits_per_pixel  u8
+                0u8, // image_desc      u8
+            ]
+        );
+
+    }
+
 }

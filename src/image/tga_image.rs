@@ -1,5 +1,9 @@
 use super::pixel::*;
+use super::tga_header::*;
 use std::iter;
+use std::io;
+use std::fs;
+use std::io::prelude::*;
 
 #[derive(Default, Debug)]
 pub struct TGAImage {
@@ -36,8 +40,15 @@ impl TGAImage {
         }
     }
 
+    pub fn write_to_file(&self, file_name: &str) -> io::Result<usize> {
+        let mut file_handle = fs::File::create(file_name)?;
+        let mut output_stream = io::BufWriter::new(file_handle);
+        output_stream.write(&TGAHeader::get_rgb_header(self.width, self.height).get_bytes())
+            .and_then(|_|output_stream.write(self.data.as_slice()))
+    }
+
     fn coords_to_index(&self, x: u16, y: u16) -> usize {
-        (x * 3u16 + y * self.width * 3u16) as usize
+        x as usize * 3usize + y as usize * self.width as usize * 3usize
     }
 }
 
@@ -66,5 +77,22 @@ mod tests {
         let mut image = TGAImage::new(500, 500, Pixel::from_rgb(0, 0, 0));
         image.set(0, 0, &Pixel::from_rgb(1, 1, 1));
         image.get(0, 0);
+    }
+
+    #[test]
+    fn test_white_image() {
+        let mut image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
+        image.write_to_file("white_test.tga");
+    }
+
+    #[test]
+    fn test_white_image_with_black_line() {
+        let width = 500u16;
+        let height = 500u16;
+        let mut image = TGAImage::new(width, height, Pixel::from_rgb(255, 255, 255));
+        for i in 0..width {
+            image.set(i, i, &Pixel::from_rgb(0, 0, 0));
+        }
+        image.write_to_file("line_test.tga");
     }
 }
