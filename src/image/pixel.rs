@@ -88,6 +88,7 @@ impl<'a> FromIterator<&'a u8> for Pixel {
 
 pub const BITS_IN_RGB_PIXEL: u8 = 24u8;
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

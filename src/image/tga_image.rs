@@ -56,7 +56,7 @@ impl TGAImage {
 mod tests {
     use super::*;
     #[test]
-    fn creating_a_2_by_2_black_picture_should_result_in_rgb_repeating_4_times() {
+    fn creating_a_2_by_2_picture_should_result_in_rgb_repeating_4_times() {
         let image = TGAImage::new(2u16, 2u16, Pixel::from_rgb(1, 2, 3));
         assert_eq!(
             image.data, vec![
@@ -86,6 +86,12 @@ mod tests {
     }
 
     #[test]
+    fn test_upper_right_corner() {
+        let image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
+        assert_eq!(image.get(499, 499), Some(Pixel::from_rgb(255, 255, 255)));
+    }
+
+    #[test]
     fn test_white_image_with_black_line() {
         let width = 500u16;
         let height = 500u16;
@@ -94,5 +100,20 @@ mod tests {
             image.set(i, i, &Pixel::from_rgb(0, 0, 0));
         }
         image.write_to_file("line_test.tga").unwrap();
+    }
+
+    #[test]
+    fn test_blue_image() {
+        let image = TGAImage::new(300, 300, Pixel::from_rgb(0, 0, 255));
+        image.write_to_file("blue_test.tga").unwrap();
+    }
+
+    #[test]
+    fn dots_test() {
+        let mut image = TGAImage::new(300, 300, Pixel::from_rgb(255, 255, 255));
+        image.set(10, 80, &Pixel::from_rgb(255, 0, 0));
+        image.set(80, 10, &Pixel::from_rgb(0, 255, 0));
+        image.set(240, 100, &Pixel::from_rgb(0, 0, 255));
+        image.write_to_file("dots_test.tga").unwrap();
     }
 }
