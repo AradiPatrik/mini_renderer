@@ -41,7 +41,7 @@ impl TGAImage {
     }
 
     pub fn write_to_file(&self, file_name: &str) -> io::Result<usize> {
-        let mut file_handle = fs::File::create(file_name)?;
+        let file_handle = fs::File::create(file_name)?;
         let mut output_stream = io::BufWriter::new(file_handle);
         output_stream.write(&TGAHeader::get_rgb_header(self.width, self.height).get_bytes())
             .and_then(|_|output_stream.write(self.data.as_slice()))
@@ -60,8 +60,8 @@ mod tests {
         let image = TGAImage::new(2u16, 2u16, Pixel::from_rgb(1, 2, 3));
         assert_eq!(
             image.data, vec![
-                1, 2, 3,  1, 2, 3,
-                1, 2, 3,  1, 2, 3,
+                3, 2, 1,  3, 2, 1,
+                3, 2, 1,  3, 2, 1,
             ]
         )
     }
@@ -81,8 +81,8 @@ mod tests {
 
     #[test]
     fn test_white_image() {
-        let mut image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
-        image.write_to_file("white_test.tga");
+        let image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
+        image.write_to_file("white_test.tga").unwrap();
     }
 
     #[test]
@@ -93,6 +93,6 @@ mod tests {
         for i in 0..width {
             image.set(i, i, &Pixel::from_rgb(0, 0, 0));
         }
-        image.write_to_file("line_test.tga");
+        image.write_to_file("line_test.tga").unwrap();
     }
 }

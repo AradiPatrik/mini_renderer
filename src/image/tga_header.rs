@@ -1,7 +1,7 @@
 use super::pixel;
 
 pub const COLOR_MAPPED_IMAGE: u8 = 1u8;
-pub const UNMAPPED_RGB: u8 = 2u8;
+pub const UNMAPPED_BGR: u8 = 2u8;
 
 #[derive(Default)]
 pub struct TGAHeader {
@@ -22,7 +22,7 @@ pub struct TGAHeader {
 impl TGAHeader {
     pub fn get_rgb_header(width: u16, height: u16) -> Self {
         let mut header = TGAHeader::default();
-        header.data_type_code = UNMAPPED_RGB;
+        header.data_type_code = UNMAPPED_BGR;
         header.width = width;
         header.height = height;
         header.bits_per_pixel = pixel::BITS_IN_RGB_PIXEL;

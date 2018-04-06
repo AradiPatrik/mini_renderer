@@ -2,9 +2,9 @@ use std::iter::FromIterator;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct Pixel {
-    pub r: u8,
-    pub g: u8,
     pub b: u8,
+    pub g: u8,
+    pub r: u8,
 }
 
 impl Pixel {
@@ -13,7 +13,7 @@ impl Pixel {
     }
 
     pub fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Pixel { r, g, b }
+        Pixel { b, g, r }
     }
 }
 
@@ -36,9 +36,9 @@ impl Iterator for PixelIntoIterator {
 
     fn next(&mut self) -> Option<u8> {
         let result = match self.index {
-            0 => self.pixel.r,
+            0 => self.pixel.b,
             1 => self.pixel.g,
-            2 => self.pixel.b,
+            2 => self.pixel.r,
             _ => return None,
         };
         self.index += 1;
@@ -65,9 +65,9 @@ impl<'a> Iterator for PixelIterator<'a> {
 
     fn next(&mut self) -> Option<u8> {
         let result = match self.index {
-            0 => self.pixel.r,
+            0 => self.pixel.b,
             1 => self.pixel.g,
-            2 => self.pixel.b,
+            2 => self.pixel.r,
             _ => return None,
         };
         self.index += 1;
@@ -79,9 +79,9 @@ impl<'a> FromIterator<&'a u8> for Pixel {
     fn from_iter<T: IntoIterator<Item= &'a u8>>(iter: T) -> Self {
         let mut into_iterator = iter.into_iter();
         Pixel {
-            r: *into_iterator.next().unwrap(),
-            g: *into_iterator.next().unwrap(),
             b: *into_iterator.next().unwrap(),
+            g: *into_iterator.next().unwrap(),
+            r: *into_iterator.next().unwrap(),
         }
     }
 }
