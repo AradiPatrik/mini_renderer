@@ -99,7 +99,7 @@ mod tests {
         for i in pixel {
             rgb.push(i);
         }
-        assert_eq!(rgb, [1, 2, 3]);
+        assert_eq!(rgb, [3, 2, 1]);
     }
 
     #[test]
@@ -109,12 +109,12 @@ mod tests {
         for i in &pixel {
             rgb.push(i);
         }
-        assert_eq!(rgb, [1, 2, 3]);
+        assert_eq!(rgb, [3, 2, 1]);
     }
 
     #[test]
     fn can_create_pixel_from_slice() {
         let pixel = Pixel::from_iter(&[1u8, 2u8, 3u8]);
-        assert_eq!(pixel, Pixel::from_rgb(1, 2, 3));
+        assert_eq!(pixel, Pixel::from_rgb(3, 2, 1));
     }
 }

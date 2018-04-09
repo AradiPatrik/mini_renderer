@@ -28,7 +28,7 @@ impl TGAImage {
     }
 
     pub fn get(&self, x: u16, y: u16) -> Option<Pixel>{
-        if x > self.width || y > self.height {
+        if x >= self.width || y >= self.height {
             None
         } else {
             let start = self.coords_to_index(x, y);
