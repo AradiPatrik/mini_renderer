@@ -13,7 +13,7 @@ impl Renderer {
         Renderer { image }
     }
 
-    pub fn line(&mut self, mut x1: u16, mut y1: u16, mut x2: u16, mut y2: u16, line_color: &Pixel) -> tga_image::Result {
+    pub fn line(&mut self, mut x1: u16, mut y1: u16, mut x2: u16, mut y2: u16, line_color: &TGAPixel) -> tga_image::Result {
         let mut is_steep = false;
         if (x2 as i32 - x1 as i32).abs() < (y2 as i32 - y1 as i32).abs() {
             mem::swap(&mut x1, &mut y1);
@@ -32,7 +32,7 @@ impl Renderer {
         Ok(())
     }
 
-    pub fn new(width: u16, height: u16, init_color: &Pixel) -> Self {
+    pub fn new(width: u16, height: u16, init_color: &TGAPixel) -> Self {
         Renderer { image: TGAImage::new(width, height, init_color) }
     }
 
@@ -51,7 +51,5 @@ fn lerp_u16(begin: u16, end: u16, offset_percent: f64) -> u16 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
 
 }
