@@ -4,6 +4,7 @@ use std::iter;
 use std::io;
 use std::fs;
 use std::io::prelude::*;
+use std;
 
 #[derive(Default, Debug)]
 pub struct TGAImage {
@@ -12,8 +13,10 @@ pub struct TGAImage {
     data: Vec<u8>,
 }
 
+pub type Result = std::result::Result<(), ()>;
+
 impl TGAImage {
-    pub fn new(width: u16, height: u16, init_color: Pixel) -> Self {
+    pub fn new(width: u16, height: u16, init_color: &Pixel) -> Self {
         let data: Vec<u8> = iter::repeat(init_color)
             .flat_map(|p| p.into_iter())
             .take((width as u32 * height as u32 * 3 as u32) as usize)
@@ -21,10 +24,15 @@ impl TGAImage {
         TGAImage { width, height, data }
     }
 
-    pub fn set(&mut self, x: u16, y: u16, pixel: &Pixel) {
-        let start = self.coords_to_index(x, y);
-        let end = start + 3usize;
-        self.data.splice(start..end, pixel.into_iter());
+    pub fn set(&mut self, x: u16, y: u16, pixel: &Pixel) -> Result {
+        if x >= self.width || y >= self.height {
+            Err(())
+        } else {
+            let start = self.coords_to_index(x, y);
+            let end = start + 3usize;
+            self.data.splice(start..end, pixel.into_iter());
+            Ok(())
+        }
     }
 
     pub fn get(&self, x: u16, y: u16) -> Option<Pixel>{
@@ -57,7 +65,7 @@ mod tests {
     use super::*;
     #[test]
     fn creating_a_2_by_2_picture_should_result_in_rgb_repeating_4_times() {
-        let image = TGAImage::new(2u16, 2u16, Pixel::from_rgb(1, 2, 3));
+        let image = TGAImage::new(2u16, 2u16, &Pixel::from_rgb(1, 2, 3));
         assert_eq!(
             image.data, vec![
                 3, 2, 1,  3, 2, 1,
@@ -67,53 +75,51 @@ mod tests {
     }
 
     #[test]
-    fn getting_a_pixel_should_work() {
-        let image = TGAImage::new(500, 500, Pixel::from_rgb(1, 2, 3));
-        assert_eq!(image.get(1, 0).unwrap(), Pixel::from_rgb(1, 2, 3));
+    fn getting_a_valid_pixel_should_return_some_valid_pixel() {
+        let image = TGAImage::new(3, 3, &Pixel::from_rgb(1, 2, 3));
+        assert_eq!(image.get(1, 2), Some(Pixel::from_rgb(1, 2, 3)));
     }
 
     #[test]
-    fn setting_a_pixel_should_work() {
-        let mut image = TGAImage::new(500, 500, Pixel::from_rgb(0, 0, 0));
-        image.set(0, 0, &Pixel::from_rgb(1, 1, 1));
-        image.get(0, 0);
+    fn getting_an_invalid_pixel_should_return_none() {
+        let image = TGAImage::new(3, 3, &Pixel::from_rgb(1, 2, 3));
+        assert_eq!(image.get(50, 10), None);
     }
 
     #[test]
-    fn test_white_image() {
-        let image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
-        image.write_to_file("white_test.tga").unwrap();
+    fn over_indexing_on_the_x_axis_should_return_none() {
+        let image = TGAImage::new(3, 3, &Pixel::from_rgb(1, 2, 3));
+        assert_eq!(image.get(3, 2), None);
     }
 
     #[test]
-    fn test_upper_right_corner() {
-        let image = TGAImage::new(500, 500, Pixel::from_rgb(255, 255, 255));
-        assert_eq!(image.get(499, 499), Some(Pixel::from_rgb(255, 255, 255)));
+    fn over_indexing_on_the_y_axis_should_return_none() {
+        let image = TGAImage::new(3, 3, &Pixel::from_rgb(1, 2, 3));
+        assert_eq!(image.get(2, 3), None);
     }
 
     #[test]
-    fn test_white_image_with_black_line() {
-        let width = 500u16;
-        let height = 500u16;
-        let mut image = TGAImage::new(width, height, Pixel::from_rgb(255, 255, 255));
-        for i in 0..width {
-            image.set(i, i, &Pixel::from_rgb(0, 0, 0));
-        }
-        image.write_to_file("line_test.tga").unwrap();
+    fn setting_a_valid_pixel_should_return_ok_and_should_set_the_right_pixel() {
+        let mut image = TGAImage::new(3, 3, &Pixel::from_rgb(0, 0, 0));
+        assert_eq!(image.set(0, 0, &Pixel::from_rgb(1, 1, 1)), Ok(()));
+        assert_eq!(image.get(0, 0), Some(Pixel::from_rgb(1, 1, 1)));
     }
 
     #[test]
-    fn test_blue_image() {
-        let image = TGAImage::new(300, 300, Pixel::from_rgb(0, 0, 255));
-        image.write_to_file("blue_test.tga").unwrap();
+    fn setting_an_over_indexed_by_one_pixel_on_the_x_axis_should_return_err() {
+        let mut image = TGAImage::new(3, 3, &Pixel::from_rgb(0, 0, 0));
+        assert_eq!(image.set(3, 2, &Pixel::from_rgb(1, 1, 1)), Err(()));
     }
 
     #[test]
-    fn dots_test() {
-        let mut image = TGAImage::new(300, 300, Pixel::from_rgb(255, 255, 255));
-        image.set(10, 80, &Pixel::from_rgb(255, 0, 0));
-        image.set(80, 10, &Pixel::from_rgb(0, 255, 0));
-        image.set(240, 100, &Pixel::from_rgb(0, 0, 255));
-        image.write_to_file("dots_test.tga").unwrap();
+    fn setting_an_over_indexed_by_one_pixel_on_the_y_axis_should_return_err() {
+        let mut image = TGAImage::new(3, 3, &Pixel::from_rgb(0, 0, 0));
+        assert_eq!(image.set(2, 3, &Pixel::from_rgb(1, 1, 1)), Err(()));
+    }
+
+    #[test]
+    fn setting_an_over_indexed_pixel_should_return_err() {
+        let mut image = TGAImage::new(10, 10, &Pixel::from_rgb(0, 0, 0));
+        assert_eq!(image.set(20, 20, &Pixel::from_rgb(1, 1, 1)), Err(()));
     }
 }
