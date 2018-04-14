@@ -1,6 +1,5 @@
 use image::traits::pixel_buffer::{PixelBuffer, Result};
 use std::mem::swap;
-use std::io;
 
 pub struct Renderer<T: PixelBuffer> {
     pub image: T
@@ -34,9 +33,6 @@ impl<T: PixelBuffer> Renderer<T> {
         Renderer { image: PixelBuffer::new(width, height, init_color) }
     }
 
-    pub fn render(&self, file_name: &str) -> io::Result<usize> {
-        self.image.write_to_file(file_name)
-    }
 }
 
 fn offset_percent_u16(begin: u16, end: u16, mid: u16) -> f64 {
