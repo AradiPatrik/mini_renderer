@@ -1,6 +1,8 @@
 use std::iter::repeat;
 use image::bgr_pixel::BGRPixel;
 use image::traits::pixel_buffer::{PixelBuffer, Result};
+use std::io::Write;
+use std::io;
 
 #[derive(Default, Debug)]
 pub struct BGRPixelBuffer {
@@ -37,7 +39,6 @@ impl PixelBuffer for BGRPixelBuffer {
             let start = self.coords_to_index(x, y);
             let pixel: BGRPixel = self.data.iter()
                 .skip(start)
-                .map(|&el| el)
                 .take(3)
                 .collect();
             Some(pixel)
@@ -46,6 +47,14 @@ impl PixelBuffer for BGRPixelBuffer {
 
     fn unpack(self) -> Vec<u8> {
         self.data
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        &self.data
+    }
+
+    fn write<T: Write>(&self, sync: &mut T) -> io::Result<usize> {
+        sync.write(self.data.as_slice())
     }
 
 }
@@ -130,5 +139,20 @@ mod tests {
         let image = BGRPixelBuffer::new(2, 1, &Pixel::black());
         let bytes: &[u8] = image.data.as_ref();
         assert_eq!(bytes, image.data.as_slice());
+    }
+
+    #[test]
+    fn should_be_able_to_get_bytes() {
+        let image = BGRPixelBuffer::new(1, 2, &Pixel::black());
+        let bytes = image.as_bytes();
+        assert_eq!(bytes, image.data.as_slice());
+    }
+
+    #[test]
+    fn should_be_able_to_write_to_file() {
+        let image = BGRPixelBuffer::new(1, 2, &Pixel::black());
+        let mut writer = vec![];
+        assert!(image.write(&mut writer).is_ok());
+        assert_eq!(writer.as_slice(), image.data.as_slice());
     }
 }

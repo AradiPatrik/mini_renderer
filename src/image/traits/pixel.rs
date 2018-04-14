@@ -1,6 +1,6 @@
 use std::iter::FromIterator;
 
-pub trait Pixel: Sized + FromIterator<u8> {
+pub trait Pixel: Sized + for<'a> FromIterator<&'a u8> {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self;
 
     fn white() -> Self {

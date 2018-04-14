@@ -32,7 +32,7 @@ impl TGAHeader {
 }
 
 impl ImageHeader for TGAHeader {
-    fn get_bytes(&self) -> Vec<u8> {
+    fn as_bytes(&self) -> Vec<u8> {
         vec![
             self.id_length,
             self.colormap_type,
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn get_rgb_header_bytes_work() {
-        let bytes = TGAHeader::get_rgb_header(1, 1).get_bytes();
+        let bytes = TGAHeader::get_rgb_header(1, 1).as_bytes();
         assert_eq!(
             bytes,
             vec!

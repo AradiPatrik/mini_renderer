@@ -32,13 +32,13 @@ impl<'a> IntoIterator for &'a BGRPixel {
     }
 }
 
-impl FromIterator<u8> for BGRPixel {
-    fn from_iter<T: IntoIterator<Item=u8>>(iter: T) -> Self {
+impl<'a> FromIterator<&'a u8> for BGRPixel {
+    fn from_iter<T: IntoIterator<Item=&'a u8>>(iter: T) -> Self {
         let mut into_iterator = iter.into_iter();
         BGRPixel {
-            b: into_iterator.next().unwrap(),
-            g: into_iterator.next().unwrap(),
-            r: into_iterator.next().unwrap(),
+            b: *into_iterator.next().unwrap(),
+            g: *into_iterator.next().unwrap(),
+            r: *into_iterator.next().unwrap(),
         }
     }
 }
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn can_create_pixel_from_slice() {
-        let pixel = BGRPixel::from_iter(vec![1u8, 2u8, 3u8].into_iter());
+        let pixel = BGRPixel::from_iter(&[1u8, 2u8, 3u8]);
         assert_eq!(pixel, BGRPixel::from_rgb(3, 2, 1));
     }
 }
