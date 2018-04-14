@@ -26,19 +26,19 @@ pub trait Pixel where Self: std::marker::Sized{
 }
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct TGAPixel {
+pub struct BGRPixel {
     pub b: u8,
     pub g: u8,
     pub r: u8,
 }
 
-impl Pixel for TGAPixel {
+impl Pixel for BGRPixel {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        TGAPixel { b, g, r }
+        BGRPixel { b, g, r }
     }
 }
 
-impl IntoIterator for TGAPixel {
+impl IntoIterator for BGRPixel {
     type Item = u8;
     type IntoIter = PixelIntoIterator;
 
@@ -48,7 +48,7 @@ impl IntoIterator for TGAPixel {
 }
 
 pub struct PixelIntoIterator {
-    pixel: TGAPixel,
+    pixel: BGRPixel,
     index: usize,
 }
 
@@ -67,7 +67,7 @@ impl Iterator for PixelIntoIterator {
     }
 }
 
-impl<'a> IntoIterator for &'a TGAPixel {
+impl<'a> IntoIterator for &'a BGRPixel {
     type Item = u8;
     type IntoIter = PixelIterator<'a>;
 
@@ -77,7 +77,7 @@ impl<'a> IntoIterator for &'a TGAPixel {
 }
 
 pub struct PixelIterator<'a> {
-    pixel: &'a TGAPixel,
+    pixel: &'a BGRPixel,
     index: usize,
 }
 
@@ -96,10 +96,10 @@ impl<'a> Iterator for PixelIterator<'a> {
     }
 }
 
-impl<'a> FromIterator<&'a u8> for TGAPixel {
+impl<'a> FromIterator<&'a u8> for BGRPixel {
     fn from_iter<T: IntoIterator<Item= &'a u8>>(iter: T) -> Self {
         let mut into_iterator = iter.into_iter();
-        TGAPixel {
+        BGRPixel {
             b: *into_iterator.next().unwrap(),
             g: *into_iterator.next().unwrap(),
             r: *into_iterator.next().unwrap(),
@@ -115,7 +115,7 @@ mod tests {
     use super::*;
     #[test]
     fn from_rgb_works_with_same_values() {
-        let pix = TGAPixel::from_rgb(0, 0, 0);
+        let pix = BGRPixel::from_rgb(0, 0, 0);
         assert_eq!(pix.r, 0);
         assert_eq!(pix.g, 0);
         assert_eq!(pix.b, 0);
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn from_rgb_works_with_different_values() {
-        let pix = TGAPixel::from_rgb(10, 20, 30);
+        let pix = BGRPixel::from_rgb(10, 20, 30);
         assert_eq!(pix.r, 10);
         assert_eq!(pix.g, 20);
         assert_eq!(pix.b, 30);
@@ -131,32 +131,32 @@ mod tests {
 
     #[test]
     fn default_interface_method_white_works() {
-        assert_eq!(TGAPixel::white(), TGAPixel::from_rgb(255, 255, 255));
+        assert_eq!(BGRPixel::white(), BGRPixel::from_rgb(255, 255, 255));
     }
 
     #[test]
     fn default_interface_method_black_works() {
-        assert_eq!(TGAPixel::black(), TGAPixel::from_rgb(0, 0, 0));
+        assert_eq!(BGRPixel::black(), BGRPixel::from_rgb(0, 0, 0));
     }
 
     #[test]
     fn default_interface_method_blue_works() {
-        assert_eq!(TGAPixel::blue(), TGAPixel::from_rgb(0, 0, 255));
+        assert_eq!(BGRPixel::blue(), BGRPixel::from_rgb(0, 0, 255));
     }
 
     #[test]
     fn default_interface_method_red_works() {
-        assert_eq!(TGAPixel::red(), TGAPixel::from_rgb(255, 0, 0));
+        assert_eq!(BGRPixel::red(), BGRPixel::from_rgb(255, 0, 0));
     }
 
     #[test]
     fn default_interface_method_green_works() {
-        assert_eq!(TGAPixel::green(), TGAPixel::from_rgb(0, 255, 0));
+        assert_eq!(BGRPixel::green(), BGRPixel::from_rgb(0, 255, 0));
     }
 
     #[test]
     fn into_iter_works_for_pixel() {
-        let pixel = TGAPixel::from_rgb(1, 2, 3);
+        let pixel = BGRPixel::from_rgb(1, 2, 3);
         let mut rgb = Vec::with_capacity(3);
         for i in pixel {
             rgb.push(i);
@@ -166,7 +166,7 @@ mod tests {
 
     #[test]
     fn into_iter_works_for_borrowed_pixel() {
-        let pixel = TGAPixel::from_rgb(1, 2, 3);
+        let pixel = BGRPixel::from_rgb(1, 2, 3);
         let mut rgb = Vec::with_capacity(3);
         for i in &pixel {
             rgb.push(i);
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn can_create_pixel_from_slice() {
-        let pixel = TGAPixel::from_iter(&[1u8, 2u8, 3u8]);
-        assert_eq!(pixel, TGAPixel::from_rgb(3, 2, 1));
+        let pixel = BGRPixel::from_iter(&[1u8, 2u8, 3u8]);
+        assert_eq!(pixel, BGRPixel::from_rgb(3, 2, 1));
     }
 }

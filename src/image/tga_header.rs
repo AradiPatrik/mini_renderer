@@ -3,6 +3,10 @@ use super::pixel;
 pub const COLOR_MAPPED_IMAGE: u8 = 1u8;
 pub const UNMAPPED_BGR: u8 = 2u8;
 
+pub trait ImageHeader {
+    fn get_bytes(&self) -> Vec<u8>;
+}
+
 #[derive(Default)]
 pub struct TGAHeader {
     id_length: u8,
@@ -28,9 +32,11 @@ impl TGAHeader {
         header.bits_per_pixel = pixel::BITS_IN_RGB_PIXEL;
         header
     }
+}
 
-    pub fn get_bytes(&self) -> [u8; 18] {
-        [
+impl ImageHeader for TGAHeader {
+    fn get_bytes(&self) -> Vec<u8> {
+        vec![
             self.id_length,
             self.colormap_type,
             self.data_type_code,
@@ -51,8 +57,6 @@ impl TGAHeader {
             self.image_descriptor
         ]
     }
-
-
 }
 
 fn get_low_bits(bit_field: u16) -> u8 {
@@ -83,6 +87,7 @@ mod tests {
         let bytes = TGAHeader::get_rgb_header(1, 1).get_bytes();
         assert_eq!(
             bytes,
+            vec!
             [
                 0u8, // id_length       u8
                 0u8, // colormap type   u8
@@ -104,7 +109,6 @@ mod tests {
                 0u8, // image_desc      u8
             ]
         );
-
     }
 
 }
