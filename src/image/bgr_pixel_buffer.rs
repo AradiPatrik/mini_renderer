@@ -37,22 +37,22 @@ impl PixelBuffer for BGRPixelBuffer {
             let start = self.coords_to_index(x, y);
             let pixel: BGRPixel = self.data.iter()
                 .skip(start)
+                .map(|&el| el)
                 .take(3)
                 .collect();
             Some(pixel)
         }
     }
 
-    fn get_data_ref_mut(&mut self) -> &mut Vec<u8> {
-        &mut self.data
+    fn unpack(self) -> Vec<u8> {
+        self.data
     }
 
-    fn get_data_ref(&self) -> &Vec<u8> {
-        &self.data
-    }
+}
 
-    fn clone_buffer(&self) -> Vec<u8> {
-        self.data.clone()
+impl AsRef<[u8]> for BGRPixelBuffer {
+    fn as_ref(&self) -> &[u8] {
+        self.data.as_ref()
     }
 }
 
@@ -116,48 +116,19 @@ mod tests {
     }
 
     #[test]
-    fn setting_an_over_indexed_by_one_pixel_on_the_y_axis_should_return_err() {
-        let mut image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        assert_eq!(image.set(2, 3, &Pixel::black()), Err(()));
+    fn should_be_able_to_unpack_data() {
+        let image = BGRPixelBuffer::new(2, 2, &Pixel::black());
+        let old_data = image.data.clone();
+        let mut new_data = image.unpack();
+        assert_eq!(old_data, new_data);
+        new_data[0] = 8;
+        assert_ne!(old_data, new_data);
     }
 
     #[test]
-    fn setting_an_over_indexed_pixel_should_return_err() {
-        let mut image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        assert_eq!(image.set(20, 20, &Pixel::black()), Err(()));
-    }
-
-    #[test]
-    fn get_data_ref_mut_should_return_mut_ref_to_data() {
-        let image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        let data_clone = image.data.clone();
-        assert_eq!(data_clone, image.data);
-    }
-
-    #[test]
-    fn should_be_able_to_modifie_data_through_get_data_ref_mut() {
-        let mut image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        image.get_data_ref_mut()[0] = 1;
-        assert_eq!(image.data[0], 1);
-    }
-
-    #[test]
-    fn get_data_ref_should_return_ref_to_data() {
-        let image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        assert_eq!(&image.data, image.get_data_ref());
-    }
-
-    #[test]
-    fn can_get_copy_of_data() {
-        let image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        assert_eq!(image.data, image.clone_buffer());
-    }
-
-    #[test]
-    fn changing_clone_should_not_affect_original() {
-        let image = BGRPixelBuffer::new(3, 3, &Pixel::black());
-        let mut data_clone = image.clone_buffer();
-        data_clone[0] = 100;
-        assert_eq!(image.data[0], 0);
+    fn should_be_able_to_get_image_as_reference() {
+        let image = BGRPixelBuffer::new(2, 1, &Pixel::black());
+        let bytes: &[u8] = image.data.as_ref();
+        assert_eq!(bytes, image.data.as_slice());
     }
 }

@@ -1,7 +1,6 @@
 use image::tga_header::TGAHeader;
 use image::bgr_pixel_buffer::BGRPixelBuffer;
 use image::bgr_pixel::BGRPixel;
-use image::traits::pixel::Pixel;
 use image::traits::pixel_buffer::PixelBuffer;
 
 pub struct TGAImage {
@@ -29,6 +28,7 @@ impl TGAImage {
 #[cfg(test)]
 mod test {
     use super::*;
+    use image::traits::pixel::Pixel;
 
     #[test]
     fn new_image_header_should_have_correct_width_and_height() {
