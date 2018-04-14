@@ -1,10 +1,11 @@
-use super::pixel::*;
-use super::tga_header::*;
-use std::iter;
 use std::io;
-use std::fs;
-use std::io::prelude::*;
-use std;
+use std::io::Write;
+use std::iter::repeat;
+use std::fs::File;
+use image::tga_pixel::BGRPixel;
+use image::tga_header::TGAHeader;
+use image::traits::pixel_buffer::{PixelBuffer, Result};
+use image::traits::image_header::ImageHeader;
 
 #[derive(Default, Debug)]
 pub struct TGAImage {
@@ -13,21 +14,10 @@ pub struct TGAImage {
     data: Vec<u8>,
 }
 
-pub type Result = std::result::Result<(), ()>;
-
-pub trait PixelBuffer {
-    type PixelType;
-
-    fn new(width: u16, height: u16, init_color: &Self::PixelType) -> Self;
-    fn set (&mut self, x: u16, y: u16, pixel: &Self::PixelType) -> Result;
-    fn get(&self, x: u16, y: u16) -> Option<Self::PixelType>;
-    fn write_to_file(&self, file_name: &str) -> io::Result<usize>;
-}
-
 impl PixelBuffer for TGAImage {
     type PixelType = BGRPixel;
     fn new(width: u16, height: u16, init_color: &BGRPixel) -> Self {
-        let data: Vec<u8> = iter::repeat(init_color)
+        let data: Vec<u8> = repeat(init_color)
             .flat_map(|p| p.into_iter())
             .take((width as u32 * height as u32 * 3 as u32) as usize)
             .collect();
@@ -45,7 +35,7 @@ impl PixelBuffer for TGAImage {
         }
     }
 
-    fn get(&self, x: u16, y: u16) -> Option<BGRPixel>{
+    fn get(&self, x: u16, y: u16) -> Option<BGRPixel> {
         if x >= self.width || y >= self.height {
             None
         } else {
@@ -59,10 +49,10 @@ impl PixelBuffer for TGAImage {
     }
 
     fn write_to_file(&self, file_name: &str) -> io::Result<usize> {
-        let file_handle = fs::File::create(file_name)?;
+        let file_handle = File::create(file_name)?;
         let mut output_stream = io::BufWriter::new(file_handle);
         output_stream.write(&TGAHeader::get_rgb_header(self.width, self.height).get_bytes())
-            .and_then(|_|output_stream.write(self.data.as_slice()))
+            .and_then(|_| output_stream.write(self.data.as_slice()))
     }
 }
 
@@ -75,13 +65,15 @@ impl TGAImage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use image::traits::pixel::Pixel;
+
     #[test]
     fn creating_a_2_by_2_picture_should_result_in_rgb_repeating_4_times() {
         let image = TGAImage::new(2u16, 2u16, &BGRPixel::from_rgb(1, 2, 3));
         assert_eq!(
             image.data, vec![
-                3, 2, 1,  3, 2, 1,
-                3, 2, 1,  3, 2, 1,
+                3, 2, 1, 3, 2, 1,
+                3, 2, 1, 3, 2, 1,
             ]
         )
     }

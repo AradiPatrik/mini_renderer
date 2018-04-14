@@ -1,29 +1,5 @@
-use std;
 use std::iter::FromIterator;
-
-pub trait Pixel where Self: std::marker::Sized{
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self;
-
-    fn white() -> Self {
-        Self::from_rgb(255, 255, 255)
-    }
-
-    fn blue() -> Self {
-        Self::from_rgb(0, 0, 255)
-    }
-
-    fn black() -> Self {
-        Self::from_rgb(0, 0, 0)
-    }
-
-    fn red() -> Self {
-        Self::from_rgb(255, 0, 0)
-    }
-
-    fn green() -> Self {
-        Self::from_rgb(0, 255, 0)
-    }
-}
+use image::traits::pixel::Pixel;
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct BGRPixel {
@@ -47,6 +23,26 @@ impl IntoIterator for BGRPixel {
     }
 }
 
+impl<'a> IntoIterator for &'a BGRPixel {
+    type Item = u8;
+    type IntoIter = PixelIterator<'a>;
+
+    fn into_iter(self) -> PixelIterator<'a> {
+        PixelIterator { pixel: self, index: 0 }
+    }
+}
+
+impl<'a> FromIterator<&'a u8> for BGRPixel {
+    fn from_iter<T: IntoIterator<Item= &'a u8>>(iter: T) -> Self {
+        let mut into_iterator = iter.into_iter();
+        BGRPixel {
+            b: *into_iterator.next().unwrap(),
+            g: *into_iterator.next().unwrap(),
+            r: *into_iterator.next().unwrap(),
+        }
+    }
+}
+
 pub struct PixelIntoIterator {
     pixel: BGRPixel,
     index: usize,
@@ -67,15 +63,6 @@ impl Iterator for PixelIntoIterator {
     }
 }
 
-impl<'a> IntoIterator for &'a BGRPixel {
-    type Item = u8;
-    type IntoIter = PixelIterator<'a>;
-
-    fn into_iter(self) -> PixelIterator<'a> {
-        PixelIterator { pixel: self, index: 0 }
-    }
-}
-
 pub struct PixelIterator<'a> {
     pixel: &'a BGRPixel,
     index: usize,
@@ -93,17 +80,6 @@ impl<'a> Iterator for PixelIterator<'a> {
         };
         self.index += 1;
         Some(result)
-    }
-}
-
-impl<'a> FromIterator<&'a u8> for BGRPixel {
-    fn from_iter<T: IntoIterator<Item= &'a u8>>(iter: T) -> Self {
-        let mut into_iterator = iter.into_iter();
-        BGRPixel {
-            b: *into_iterator.next().unwrap(),
-            g: *into_iterator.next().unwrap(),
-            r: *into_iterator.next().unwrap(),
-        }
     }
 }
 

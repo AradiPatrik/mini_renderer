@@ -1,11 +1,8 @@
-use super::pixel;
+use image::traits::image_header::ImageHeader;
+use image::tga_pixel::BITS_IN_RGB_PIXEL;
 
 pub const COLOR_MAPPED_IMAGE: u8 = 1u8;
 pub const UNMAPPED_BGR: u8 = 2u8;
-
-pub trait ImageHeader {
-    fn get_bytes(&self) -> Vec<u8>;
-}
 
 #[derive(Default)]
 pub struct TGAHeader {
@@ -29,7 +26,7 @@ impl TGAHeader {
         header.data_type_code = UNMAPPED_BGR;
         header.width = width;
         header.height = height;
-        header.bits_per_pixel = pixel::BITS_IN_RGB_PIXEL;
+        header.bits_per_pixel = BITS_IN_RGB_PIXEL;
         header
     }
 }

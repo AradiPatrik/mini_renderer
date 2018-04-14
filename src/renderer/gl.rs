@@ -1,7 +1,6 @@
-use image::tga_image;
+use image::traits::pixel_buffer::{PixelBuffer, Result};
+use std::mem::swap;
 use std::io;
-use std::mem;
-use image::tga_image::PixelBuffer;
 
 pub struct Renderer<T: PixelBuffer> {
     pub image: T
@@ -12,11 +11,11 @@ impl<T: PixelBuffer> Renderer<T> {
         Renderer { image }
     }
 
-    pub fn line(&mut self, mut x1: u16, mut y1: u16, mut x2: u16, mut y2: u16, line_color: &T::PixelType) -> tga_image::Result {
+    pub fn line(&mut self, mut x1: u16, mut y1: u16, mut x2: u16, mut y2: u16, line_color: &T::PixelType) -> Result {
         let mut is_steep = false;
         if (x2 as i32 - x1 as i32).abs() < (y2 as i32 - y1 as i32).abs() {
-            mem::swap(&mut x1, &mut y1);
-            mem::swap(&mut x2, &mut y2);
+            swap(&mut x1, &mut y1);
+            swap(&mut x2, &mut y2);
             is_steep = true;
         }
         for x in x1..x2 {
