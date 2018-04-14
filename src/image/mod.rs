@@ -1,4 +1,5 @@
-pub mod tga_pixel;
+pub mod bgr_pixel;
 pub mod tga_header;
-pub mod tga_image;
+pub mod bgr_pixel_buffer;
 pub mod traits;
+pub mod tga_image;

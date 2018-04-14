@@ -1,23 +1,23 @@
 use image::traits::image_header::ImageHeader;
-use image::tga_pixel::BITS_IN_RGB_PIXEL;
+use image::bgr_pixel::BITS_IN_RGB_PIXEL;
 
 pub const COLOR_MAPPED_IMAGE: u8 = 1u8;
 pub const UNMAPPED_BGR: u8 = 2u8;
 
 #[derive(Default)]
 pub struct TGAHeader {
-    id_length: u8,
-    colormap_type: u8,
-    data_type_code: u8,
-    colormap_origin: u16,
-    colormap_length: u16,
-    colormap_depth: u8,
-    x_origin: u16,
-    y_origin: u16,
-    width: u16,
-    height: u16,
-    bits_per_pixel: u8,
-    image_descriptor: u8,
+    pub id_length: u8,
+    pub colormap_type: u8,
+    pub data_type_code: u8,
+    pub colormap_origin: u16,
+    pub colormap_length: u16,
+    pub colormap_depth: u8,
+    pub x_origin: u16,
+    pub y_origin: u16,
+    pub width: u16,
+    pub height: u16,
+    pub bits_per_pixel: u8,
+    pub image_descriptor: u8,
 }
 
 impl TGAHeader {
