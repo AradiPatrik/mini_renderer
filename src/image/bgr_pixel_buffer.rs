@@ -155,4 +155,9 @@ mod tests {
         assert!(image.write(&mut writer).is_ok());
         assert_eq!(writer.as_slice(), image.data.as_slice());
     }
+
+    #[test]
+    fn should_be_able_to_iterate_over_pixels() {
+
+    }
 }

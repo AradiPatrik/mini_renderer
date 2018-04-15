@@ -1,5 +1,7 @@
 use image::traits::image_header::ImageHeader;
 use image::bgr_pixel::BITS_IN_RGB_PIXEL;
+use std::io::Write;
+use std::io;
 
 pub const COLOR_MAPPED_IMAGE: u8 = 1u8;
 pub const UNMAPPED_BGR: u8 = 2u8;
@@ -54,6 +56,9 @@ impl ImageHeader for TGAHeader {
             self.image_descriptor
         ]
     }
+    fn write<W: Write>(&self, sync: &mut W) -> io::Result<usize>{
+        sync.write(&self.as_bytes())
+    }
 }
 
 fn get_low_bits(bit_field: u16) -> u8 {
@@ -106,6 +111,14 @@ mod tests {
                 0u8, // image_desc      u8
             ]
         );
+    }
+
+    #[test]
+    fn should_be_able_to_write_file_header() {
+        let header = TGAHeader::get_rgb_header(1, 1);
+        let mut sync = vec![];
+        assert!(header.write(&mut sync).is_ok());
+        assert_eq!(header.as_bytes(), sync);
     }
 
 }
