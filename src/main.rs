@@ -1,5 +1,6 @@
-extern crate image_writer;
+extern crate image;
 
 fn main() {
 
 }
+

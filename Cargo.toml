@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Aradi Patrik <aradipatrik@gmail.com>"]
 
 [dependencies]
+image = "*"
