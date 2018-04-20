@@ -42,11 +42,23 @@ impl Renderer {
         if let Err(error) = self.check_for_out_of_bounds(&start, &end) {
             return Err(error);
         }
+        let x_distance = (start.x as i32 - end.x as i32).abs() as u32;
+        let y_distance = (start.y as i32 - end.y as i32).abs() as u32;
+        let mut is_steep = false;
+        if y_distance > x_distance {
+            mem::swap(&mut start.x, &mut end.y);
+            mem::swap(&mut start.y, &mut end.x);
+            is_steep = true;
+        }
         if start.x > end.x {
             mem::swap(&mut start, &mut end);
         }
         for x in start.x..end.x + 1 {
-            self.buffer[(x, lerp(start.y, end.y, (x - start.x) as f64 / (end.x - start.x) as f64 ))] = col;
+            if is_steep {
+                self.buffer[(lerp(start.y, end.y, (x - start.x) as f64 / (end.x - start.x) as f64 ), x)] = col;
+            } else {
+                self.buffer[(x, lerp(start.y, end.y, (x - start.x) as f64 / (end.x - start.x) as f64 ))] = col;
+            }
         }
         Ok(())
     }
@@ -122,6 +134,22 @@ mod test {
     }
 
     #[test]
+    fn should_be_able_to_draw_shallow_line() {
+        let mut renderer = Renderer::new(2, 2);
+        let draw_result = renderer.line(Point::new(0, 0), Point::new(1, 0), Rgb([1,1,1]));
+        assert!(draw_result.is_ok());
+        renderer_should_have_drawn_flat_line(&renderer);
+    }
+
+    #[test]
+    fn should_be_able_to_draw_steep_line() {
+        let mut renderer = Renderer::new(2, 2);
+        let draw_result = renderer.line(Point::new(0, 0), Point::new(0, 1), Rgb([1,1,1]));
+        assert!(draw_result.is_ok());
+        renderer_should_have_drawn_straight_vertical_line(&renderer);
+    }
+
+    #[test]
     fn should_be_able_to_clear_with_renderer() {
         let mut renderer = Renderer::new(2, 2);
         renderer.clear_to_color(Rgb([5,5,5]));
@@ -135,6 +163,20 @@ mod test {
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+        assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
+    }
+
+    fn renderer_should_have_drawn_flat_line(renderer: &Renderer) {
+        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
+        assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+    }
+
+    fn renderer_should_have_drawn_straight_vertical_line(renderer: &Renderer) {
+        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
+        assert_eq!(renderer.buffer[(0, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
     }
 }
