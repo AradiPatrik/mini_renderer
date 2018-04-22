@@ -14,7 +14,7 @@ use image::{Rgb, ImageRgb8};
 fn main() {
     let mut reader = BufReader::new(File::open("resources/african_head.obj").unwrap());
     let mut obj_file_text= String::new();
-    reader.read_to_string(&mut obj_file_text).except("Could not read obj_file");
+    reader.read_to_string(&mut obj_file_text).unwrap();
     let scene = obj::parse(obj_file_text).unwrap();
     let the_mesh = &scene.objects[0];
     let mut renderer = Renderer::new(800, 800);

@@ -3,13 +3,14 @@ extern crate wavefront_obj;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
+use std::ops::{Add, Sub};
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
     PixelOutOfImageBounds(u32, u32, Point)
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Point {
     pub x: u32,
     pub y: u32,
@@ -18,6 +19,25 @@ pub struct Point {
 impl Point {
     pub fn new(x: u32, y: u32) -> Self {
         Point {x, y}
+    }
+    pub fn unit() -> Self {
+        Point {x: 1, y: 1}
+    }
+}
+
+impl Add for Point {
+    type Output = Point;
+
+    fn add(self, rhs: Point) -> <Self as Add<Point>>::Output {
+        Point::new(self.x + rhs.x, self.y + rhs.y)
+    }
+}
+
+impl Sub for Point {
+    type Output = Point;
+
+    fn sub(self, rhs: Point) -> <Self as Sub<Point>>::Output {
+        Point::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
@@ -76,8 +96,8 @@ impl Renderer {
 
     fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point {
         let mut result = Point::new(0, 0);
-        result.x = ((vertex.x + 1.0) * self.buffer.width() as f64 / 2.0) as u32;
-        result.y = ((vertex.y + 1.0) * self.buffer.height() as f64 / 2.0) as u32;
+        result.x = ((vertex.x + 1.0) * (self.buffer.width() - 1) as f64 / 2.0) as u32;
+        result.y = ((vertex.y + 1.0) * (self.buffer.height() - 1) as f64 / 2.0) as u32;
         result
     }
 
@@ -221,7 +241,27 @@ mod test {
         assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(2, 1)], Rgb([0, 0, 0]));
+    }
+
+    #[test]
+    fn should_be_able_to_add_points() {
+        let x = Point::new(5, 5);
+        let y = Point::new(1, 1);
+        let z = x + y;
+        assert_eq!(z, Point::new(6, 6));
+    }
+
+    #[test]
+    fn should_be_able_to_substract_points() {
+        let x = Point::new(5, 5);
+        let y = Point::new(1, 1);
+        let z = x - y;
+        assert_eq!(z, Point::new(4, 4));
+    }
+
+    #[test]
+    fn unit_should_return_the_unit_point() {
+        assert_eq!(Point::unit(), Point::new(1, 1));
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {
