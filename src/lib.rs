@@ -122,7 +122,7 @@ impl Renderer {
 }
 
 #[inline]
-fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
+pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
     (start as f64 + (end as i32 - start as i32) as f64 * lerp_amount).round() as u32
 }
 
