@@ -5,3 +5,4 @@ authors = ["Aradi Patrik <aradipatrik@gmail.com>"]
 
 [dependencies]
 image = "*"
+wavefront_obj = "5.1.0"

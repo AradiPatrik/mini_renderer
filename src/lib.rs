@@ -1,6 +1,8 @@
 extern crate image;
+extern crate wavefront_obj;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
+use wavefront_obj::obj::Vertex;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
@@ -63,6 +65,30 @@ impl Renderer {
         Ok(())
     }
 
+    pub fn triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
+        let point_a = self.vertex_into_image_space_2d(vertex_a);
+        let point_b = self.vertex_into_image_space_2d(vertex_b);
+        let point_c = self.vertex_into_image_space_2d(vertex_c);
+        self.line(point_a.clone(), point_b.clone(), col)?;
+        self.line(point_b, point_c.clone(), col)?;
+        self.line(point_c, point_a, col)
+    }
+
+    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point {
+        let mut result = Point::new(0, 0);
+        result.x = ((vertex.x + 1.0) * self.buffer.width() as f64 / 2.0) as u32;
+        result.y = ((vertex.y + 1.0) * self.buffer.height() as f64 / 2.0) as u32;
+        result
+    }
+
+    pub fn get_buffer_reference(&self) -> &RgbImage {
+        &self.buffer
+    }
+
+    pub fn unpack(self) -> RgbImage {
+        self.buffer
+    }
+
     fn check_for_out_of_bounds(&self, start: &Point, end: &Point) -> Result<(), RendererError> {
         let (width, height) = self.buffer.dimensions();
         if start.x >= width || start.y >= height {
@@ -83,6 +109,7 @@ fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
 #[cfg(test)]
 mod test {
     use super::*;
+    use wavefront_obj::obj::Vertex;
 
     #[test]
     fn should_be_able_to_create_renderer_from_dimensions() {
@@ -157,6 +184,44 @@ mod test {
         assert_eq!(renderer.buffer[(0, 1)], Rgb([5, 5, 5]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([5, 5, 5]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([5, 5, 5]));
+    }
+
+    #[test]
+    fn should_be_able_to_get_reference_to_data() {
+        let renderer = Renderer::new(2, 2);
+        let buffer_ref = renderer.get_buffer_reference();
+        for pixel_ref in buffer_ref.pixels() {
+            assert_eq!(Rgb([0, 0, 0]), *pixel_ref);
+        }
+        assert_eq!(2, buffer_ref.height());
+        assert_eq!(2, buffer_ref.width());
+    }
+
+    #[test]
+    fn should_be_able_to_unpack_renderer() {
+        let renderer = Renderer::new(2, 2);
+        let buffer = renderer.unpack();
+        for pixel_ref in buffer.pixels() {
+            assert_eq!(Rgb([0, 0, 0]), *pixel_ref);
+        }
+        assert_eq!(2, buffer.height());
+        assert_eq!(2, buffer.width());
+    }
+
+    #[test]
+    fn should_be_able_to_draw_triangle() {
+        let mut renderer = Renderer::new(3, 3);
+        let vertex_a = Vertex{ x: 0.0, y: 1.0, z: 0.0 };
+        let vertex_b = Vertex{ x: 1.0, y: -1.0, z: 0.0};
+        let vertex_c = Vertex{ x: -1.0, y: -1.0, z: 0.0};
+        let result = renderer.triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([1, 1, 1]));
+        assert_eq!(Ok(()), result);
+        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(1, 2)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(2, 1)], Rgb([0, 0, 0]));
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {
