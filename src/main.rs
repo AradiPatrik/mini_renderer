@@ -39,22 +39,24 @@ fn draw_triangle(renderer: &mut Renderer, point_a: &Point, point_b: &Point, poin
 }
 
 fn main() {
-    let mut renderer = Renderer::new(500, 500);
-    let red = Rgb([255, 0, 0]);
-    let green = Rgb([0, 255, 0]);
-    let blue = Rgb([0, 0, 255]);
-    let white = Rgb([255, 255, 255]);
-    let tri_a = (Point::new(10, 70), Point::new(50, 160), Point::new(70, 80));
-    let tri_b = (Point::new(180, 50), Point::new(150, 1), Point::new(70, 180));
-    let tri_c = (Point::new(180, 150), Point::new(120, 160), Point::new(130, 180));
-    draw_triangle(&mut renderer, &tri_a.0, &tri_a.1, &tri_a.2, &red);
-    draw_triangle(&mut renderer, &tri_b.0, &tri_b.1, &tri_b.2, &white);
-    draw_triangle(&mut renderer, &tri_c.0, &tri_c.1, &tri_c.2, &green);
-    draw_filled_triangle(&mut renderer, tri_a.0, tri_a.1, tri_a.2);
-    draw_filled_triangle(&mut renderer, tri_b.0, tri_b.1, tri_b.2);
-    draw_filled_triangle(&mut renderer, tri_c.0, tri_c.1, tri_c.2);
+    // let mut renderer = Renderer::new(500, 500);
+    // let red = Rgb([255, 0, 0]);
+    // let green = Rgb([0, 255, 0]);
+    // let blue = Rgb([0, 0, 255]);
+    // let white = Rgb([255, 255, 255]);
+    // let tri_a = (Point::new(10, 70), Point::new(50, 160), Point::new(70, 80));
+    // let tri_b = (Point::new(180, 50), Point::new(150, 1), Point::new(70, 180));
+    // let tri_c = (Point::new(180, 150), Point::new(120, 160), Point::new(130, 180));
+    // draw_triangle(&mut renderer, &tri_a.0, &tri_a.1, &tri_a.2, &red);
+    // draw_triangle(&mut renderer, &tri_b.0, &tri_b.1, &tri_b.2, &white);
+    // draw_triangle(&mut renderer, &tri_c.0, &tri_c.1, &tri_c.2, &green);
+    // draw_filled_triangle(&mut renderer, tri_a.0, tri_a.1, tri_a.2);
+    // draw_filled_triangle(&mut renderer, tri_b.0, tri_b.1, tri_b.2);
+    // draw_filled_triangle(&mut renderer, tri_c.0, tri_c.1, tri_c.2);
 
-    write_renderer(renderer);
+    draw_obj();
+
+    // write_renderer(renderer);
 
 }
 
@@ -65,7 +67,7 @@ fn write_renderer(renderer: Renderer) {
 }
 
 fn draw_obj() {
-    let mut reader = BufReader::new(File::open("resources/african_head.obj").unwrap());
+    let mut reader = BufReader::new(File::open("resources/diablo.obj").unwrap());
     let mut obj_file_text = String::new();
     reader.read_to_string(&mut obj_file_text).unwrap();
     let scene = obj::parse(obj_file_text).unwrap();
