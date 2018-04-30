@@ -7,14 +7,14 @@ use std::io::BufReader;
 use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use image_writer::{Renderer, Point};
+use image_writer::{Renderer, Vector2};
 use image::{Rgb, ImageRgb8};
 use wavefront_obj::obj::Vertex;
 use wavefront_obj::mtl::Color;
 use image_writer::lerp;
 
 
-fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point<u32>, point_b: Point<u32>, point_c: Point<u32>) {
+fn draw_filled_triangle(renderer: &mut Renderer, point_a: Vector2<u32>, point_b: Vector2<u32>, point_c: Vector2<u32>) {
     let mut points = vec![point_a, point_b, point_c];
     points.sort_by(|point_a, point_b| (point_a.y).cmp(&(point_b.y)));
     for y in points[0].y..points[2].y + 1 {
@@ -28,11 +28,11 @@ fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point<u32>, point_b: P
         }
         let right_lerp_amount = (y - points[0].y) as f64 / (points[2].y - points[0].y) as f64;
         let x_right = lerp(points[0].x, points[2].x, right_lerp_amount);
-        renderer.line(Point::new(x_left, y), Point::new(x_right, y), Rgb([60, 10, 150]));
+        renderer.line(Vector2::new(x_left, y), Vector2::new(x_right, y), Rgb([60, 10, 150]));
     }
 }
 
-fn draw_triangle(renderer: &mut Renderer, point_a: &Point<u32>, point_b: &Point<u32>, point_c: &Point<u32>, col: &Rgb<u8>) {
+fn draw_triangle(renderer: &mut Renderer, point_a: &Vector2<u32>, point_b: &Vector2<u32>, point_c: &Vector2<u32>, col: &Rgb<u8>) {
     renderer.line(point_a.clone(), point_b.clone(), col.clone());
     renderer.line(point_b.clone(), point_c.clone(), col.clone());
     renderer.line(point_c.clone(), point_a.clone(), col.clone());
@@ -44,9 +44,9 @@ fn main() {
     // let green = Rgb([0, 255, 0]);
     // let blue = Rgb([0, 0, 255]);
     // let white = Rgb([255, 255, 255]);
-    // let tri_a = (Point::new(10, 70), Point::new(50, 160), Point::new(70, 80));
-    // let tri_b = (Point::new(180, 50), Point::new(150, 1), Point::new(70, 180));
-    // let tri_c = (Point::new(180, 150), Point::new(120, 160), Point::new(130, 180));
+    // let tri_a = (Vector2::new(10, 70), Vector2::new(50, 160), Vector2::new(70, 80));
+    // let tri_b = (Vector2::new(180, 50), Vector2::new(150, 1), Vector2::new(70, 180));
+    // let tri_c = (Vector2::new(180, 150), Vector2::new(120, 160), Vector2::new(130, 180));
     // draw_triangle(&mut renderer, &tri_a.0, &tri_a.1, &tri_a.2, &red);
     // draw_triangle(&mut renderer, &tri_b.0, &tri_b.1, &tri_b.2, &white);
     // draw_triangle(&mut renderer, &tri_c.0, &tri_c.1, &tri_c.2, &green);

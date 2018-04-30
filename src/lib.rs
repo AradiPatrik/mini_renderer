@@ -9,34 +9,34 @@ use num::traits::Num;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
-    PixelOutOfImageBounds(u32, u32, Point<u32>)
+    PixelOutOfImageBounds(u32, u32, Vector2<u32>)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Point<T: Num> {
+pub struct Vector2<T: Num> {
     pub x: T,
     pub y: T,
 }
 
-impl<T: Num> Point<T> {
+impl<T: Num> Vector2<T> {
     pub fn new(x: T, y: T) -> Self {
-        Point {x, y}
+        Vector2 {x, y}
     }
 }
 
-impl<T: Num> Add for Point<T> {
-    type Output = Point<T>;
+impl<T: Num> Add for Vector2<T> {
+    type Output = Vector2<T>;
 
-    fn add(self, rhs: Point<T>) -> <Self as Add<Point<T>>>::Output {
-        Point::new(self.x + rhs.x, self.y + rhs.y)
+    fn add(self, rhs: Vector2<T>) -> <Self as Add<Vector2<T>>>::Output {
+        Vector2::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 
-impl<T: Num> Sub for Point<T> {
-    type Output = Point<T>;
+impl<T: Num> Sub for Vector2<T> {
+    type Output = Vector2<T>;
 
-    fn sub(self, rhs: Point<T>) -> <Self as Sub<Point<T>>>::Output {
-        Point::new(self.x - rhs.x, self.y - rhs.y)
+    fn sub(self, rhs: Vector2<T>) -> <Self as Sub<Vector2<T>>>::Output {
+        Vector2::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
 
@@ -59,7 +59,7 @@ impl Renderer {
         }
     }
 
-    pub fn line(&mut self, mut start: Point<u32>, mut end: Point<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
+    pub fn line(&mut self, mut start: Vector2<u32>, mut end: Vector2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
         if let Err(error) = self.check_for_out_of_bounds(&start, &end) {
             return Err(error);
         }
@@ -93,8 +93,8 @@ impl Renderer {
         self.line(point_c, point_a, col)
     }
 
-    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point<u32> {
-        let mut result = Point::new(0, 0);
+    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Vector2<u32> {
+        let mut result = Vector2::new(0, 0);
         result.x = ((vertex.x + 1.0) * (self.buffer.width() - 1) as f64 / 2.0) as u32;
         result.y = ((vertex.y + 1.0) * (self.buffer.height() - 1) as f64 / 2.0) as u32;
         result
@@ -108,7 +108,7 @@ impl Renderer {
         self.buffer
     }
 
-    fn check_for_out_of_bounds(&self, start: &Point<u32>, end: &Point<u32>) -> Result<(), RendererError> {
+    fn check_for_out_of_bounds(&self, start: &Vector2<u32>, end: &Vector2<u32>) -> Result<(), RendererError> {
         let (width, height) = self.buffer.dimensions();
         if start.x >= width || start.y >= height {
             Err(RendererError::PixelOutOfImageBounds(width, height, start.clone()))
@@ -143,7 +143,7 @@ mod test {
 
     #[test]
     fn should_be_able_to_create_a_point() {
-        let a = Point::new(2, 3);
+        let a = Vector2::new(2, 3);
         assert_eq!(a.x, 2);
         assert_eq!(a.y, 3);
     }
@@ -151,7 +151,7 @@ mod test {
     #[test]
     fn draw_a_zero_length_line_should_draw_a_dot() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point::new(0, 0), Point::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Vector2::new(0, 0), Vector2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
         assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
@@ -161,28 +161,28 @@ mod test {
     #[test]
     fn draw_even_line() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point::new(0, 0), Point::new(1, 1), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Vector2::new(0, 0), Vector2::new(1, 1), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn parameter_order_should_not_matter() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point::new(1, 1), Point::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Vector2::new(1, 1), Vector2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn over_indexing_should_result_in_error() {
         let mut renderer = Renderer::new(2, 2);
-        let result = renderer.line(Point::new(2, 2), Point::new(2, 2), Rgb([1, 1, 1]));
-        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point::new(2, 2))));
+        let result = renderer.line(Vector2::new(2, 2), Vector2::new(2, 2), Rgb([1, 1, 1]));
+        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Vector2::new(2, 2))));
     }
 
     #[test]
     fn should_be_able_to_draw_shallow_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Point::new(0, 0), Point::new(1, 0), Rgb([1,1,1]));
+        let draw_result = renderer.line(Vector2::new(0, 0), Vector2::new(1, 0), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_flat_line(&renderer);
     }
@@ -190,7 +190,7 @@ mod test {
     #[test]
     fn should_be_able_to_draw_steep_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Point::new(0, 0), Point::new(0, 1), Rgb([1,1,1]));
+        let draw_result = renderer.line(Vector2::new(0, 0), Vector2::new(0, 1), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_straight_vertical_line(&renderer);
     }
@@ -244,18 +244,18 @@ mod test {
 
     #[test]
     fn should_be_able_to_add_points() {
-        let x = Point::new(5, 5);
-        let y = Point::new(1, 1);
+        let x = Vector2::new(5, 5);
+        let y = Vector2::new(1, 1);
         let z = x + y;
-        assert_eq!(z, Point::new(6, 6));
+        assert_eq!(z, Vector2::new(6, 6));
     }
 
     #[test]
     fn should_be_able_to_substract_points() {
-        let x = Point::new(5, 5);
-        let y = Point::new(1, 1);
+        let x = Vector2::new(5, 5);
+        let y = Vector2::new(1, 1);
         let z = x - y;
-        assert_eq!(z, Point::new(4, 4));
+        assert_eq!(z, Vector2::new(4, 4));
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {
