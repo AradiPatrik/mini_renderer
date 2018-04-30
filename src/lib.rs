@@ -129,10 +129,11 @@ impl<'a> LineDrawer<'a> {
     }
 
     fn fill_point(&mut self, x: u32) {
+        let base_offset = lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64);
         if self.is_steep {
-            self.buffer[(lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64 ), x)] = self.col;
+            self.buffer[(base_offset, x)] = self.col;
         } else {
-            self.buffer[(x, lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64 ))] = self.col;
+            self.buffer[(x, base_offset)] = self.col;
         }
     }
 }
