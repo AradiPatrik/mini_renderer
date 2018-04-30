@@ -4,40 +4,12 @@ extern crate num;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
-use std::ops::{Add, Sub};
-use num::traits::Num;
+pub mod vector;
+use vector::vector2::Vector2;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
     PixelOutOfImageBounds(u32, u32, Vector2<u32>)
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Vector2<T: Num> {
-    pub x: T,
-    pub y: T,
-}
-
-impl<T: Num> Vector2<T> {
-    pub fn new(x: T, y: T) -> Self {
-        Vector2 {x, y}
-    }
-}
-
-impl<T: Num> Add for Vector2<T> {
-    type Output = Vector2<T>;
-
-    fn add(self, rhs: Vector2<T>) -> <Self as Add<Vector2<T>>>::Output {
-        Vector2::new(self.x + rhs.x, self.y + rhs.y)
-    }
-}
-
-impl<T: Num> Sub for Vector2<T> {
-    type Output = Vector2<T>;
-
-    fn sub(self, rhs: Vector2<T>) -> <Self as Sub<Vector2<T>>>::Output {
-        Vector2::new(self.x - rhs.x, self.y - rhs.y)
-    }
 }
 
 pub struct Renderer {
@@ -59,28 +31,11 @@ impl Renderer {
         }
     }
 
-    pub fn line(&mut self, mut start: Vector2<u32>, mut end: Vector2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
+    pub fn line(&mut self, start: Vector2<u32>, end: Vector2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
         if let Err(error) = self.check_for_out_of_bounds(&start, &end) {
             return Err(error);
         }
-        let x_distance = (start.x as i32 - end.x as i32).abs() as u32;
-        let y_distance = (start.y as i32 - end.y as i32).abs() as u32;
-        let mut is_steep = false;
-        if y_distance > x_distance {
-            mem::swap(&mut start.x, &mut end.y);
-            mem::swap(&mut start.y, &mut end.x);
-            is_steep = true;
-        }
-        if start.x > end.x {
-            mem::swap(&mut start, &mut end);
-        }
-        for x in start.x..end.x + 1 {
-            if is_steep {
-                self.buffer[(lerp(start.y, end.y, (x - start.x) as f64 / (end.x - start.x) as f64 ), x)] = col;
-            } else {
-                self.buffer[(x, lerp(start.y, end.y, (x - start.x) as f64 / (end.x - start.x) as f64 ))] = col;
-            }
-        }
+        LineDrawer::new(start, end, col, &mut self.buffer).draw_line();
         Ok(())
     }
 
@@ -123,6 +78,63 @@ impl Renderer {
 #[inline]
 pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
     (start as f64 + (end as i32 - start as i32) as f64 * lerp_amount).round() as u32
+}
+
+struct LineDrawer<'a> {
+    start: Vector2<u32>,
+    end: Vector2<u32>,
+    col: Rgb<u8>,
+    is_steep: bool,
+    buffer: &'a mut RgbImage,
+}
+
+impl<'a> LineDrawer<'a> {
+    pub fn new(start: Vector2<u32>, end: Vector2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+        let mut drawer = LineDrawer::create_initial_instance(start, end, col, buffer);
+        drawer.invert_line();
+        drawer.switch_points();
+        drawer
+    }
+
+    fn create_initial_instance(start: Vector2<u32>, end: Vector2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+        LineDrawer {
+            start,
+            end,
+            col,
+            is_steep: false,
+            buffer,
+        }
+    }
+
+    fn invert_line(&mut self) {
+        let x_distance = (self.start.x as i32 - self.end.x as i32).abs() as u32;
+        let y_distance = (self.start.y as i32 - self.end.y as i32).abs() as u32;
+        if y_distance > x_distance {
+            mem::swap(&mut self.start.x, &mut self.end.y);
+            mem::swap(&mut self.start.y, &mut self.end.x);
+            self.is_steep = true;
+        }
+    }
+
+    fn switch_points(&mut self) {
+        if self.start.x > self.end.x {
+            mem::swap(&mut self.start, &mut self.end);
+        }
+    }
+
+    pub fn draw_line(&mut self) {
+        for x in self.start.x..self.end.x + 1 {
+            self.fill_point(x);
+        }
+    }
+
+    fn fill_point(&mut self, x: u32) {
+        if self.is_steep {
+            self.buffer[(lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64 ), x)] = self.col;
+        } else {
+            self.buffer[(x, lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64 ))] = self.col;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -240,22 +252,6 @@ mod test {
         assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
-    }
-
-    #[test]
-    fn should_be_able_to_add_points() {
-        let x = Vector2::new(5, 5);
-        let y = Vector2::new(1, 1);
-        let z = x + y;
-        assert_eq!(z, Vector2::new(6, 6));
-    }
-
-    #[test]
-    fn should_be_able_to_substract_points() {
-        let x = Vector2::new(5, 5);
-        let y = Vector2::new(1, 1);
-        let z = x - y;
-        assert_eq!(z, Vector2::new(4, 4));
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {

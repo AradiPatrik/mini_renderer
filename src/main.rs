@@ -7,7 +7,7 @@ use std::io::BufReader;
 use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use image_writer::{Renderer, Vector2};
+use image_writer::{Renderer, vector::vector2::Vector2};
 use image::{Rgb, ImageRgb8};
 use wavefront_obj::obj::Vertex;
 use wavefront_obj::mtl::Color;
