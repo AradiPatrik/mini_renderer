@@ -124,11 +124,11 @@ impl<'a> LineDrawer<'a> {
 
     pub fn draw_line(&mut self) {
         for x in self.start.x..self.end.x + 1 {
-            self.fill_point(x);
+            self.fill_next_line_point(x);
         }
     }
 
-    fn fill_point(&mut self, x: u32) {
+    fn fill_next_line_point(&mut self, x: u32) {
         let base_offset = lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64);
         if self.is_steep {
             self.buffer[(base_offset, x)] = self.col;
