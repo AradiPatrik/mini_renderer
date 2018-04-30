@@ -1,42 +1,41 @@
 extern crate image;
 extern crate wavefront_obj;
+extern crate num;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
 use std::ops::{Add, Sub};
+use num::traits::Num;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
-    PixelOutOfImageBounds(u32, u32, Point)
+    PixelOutOfImageBounds(u32, u32, Point<u32>)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Point {
-    pub x: u32,
-    pub y: u32,
+pub struct Point<T: Num> {
+    pub x: T,
+    pub y: T,
 }
 
-impl Point {
-    pub fn new(x: u32, y: u32) -> Self {
+impl<T: Num> Point<T> {
+    pub fn new(x: T, y: T) -> Self {
         Point {x, y}
     }
-    pub fn unit() -> Self {
-        Point {x: 1, y: 1}
-    }
 }
 
-impl Add for Point {
-    type Output = Point;
+impl<T: Num> Add for Point<T> {
+    type Output = Point<T>;
 
-    fn add(self, rhs: Point) -> <Self as Add<Point>>::Output {
+    fn add(self, rhs: Point<T>) -> <Self as Add<Point<T>>>::Output {
         Point::new(self.x + rhs.x, self.y + rhs.y)
     }
 }
 
-impl Sub for Point {
-    type Output = Point;
+impl<T: Num> Sub for Point<T> {
+    type Output = Point<T>;
 
-    fn sub(self, rhs: Point) -> <Self as Sub<Point>>::Output {
+    fn sub(self, rhs: Point<T>) -> <Self as Sub<Point<T>>>::Output {
         Point::new(self.x - rhs.x, self.y - rhs.y)
     }
 }
@@ -60,7 +59,7 @@ impl Renderer {
         }
     }
 
-    pub fn line(&mut self, mut start: Point, mut end: Point, col: Rgb<u8>) -> Result<(), RendererError> {
+    pub fn line(&mut self, mut start: Point<u32>, mut end: Point<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
         if let Err(error) = self.check_for_out_of_bounds(&start, &end) {
             return Err(error);
         }
@@ -94,7 +93,7 @@ impl Renderer {
         self.line(point_c, point_a, col)
     }
 
-    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point {
+    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point<u32> {
         let mut result = Point::new(0, 0);
         result.x = ((vertex.x + 1.0) * (self.buffer.width() - 1) as f64 / 2.0) as u32;
         result.y = ((vertex.y + 1.0) * (self.buffer.height() - 1) as f64 / 2.0) as u32;
@@ -109,7 +108,7 @@ impl Renderer {
         self.buffer
     }
 
-    fn check_for_out_of_bounds(&self, start: &Point, end: &Point) -> Result<(), RendererError> {
+    fn check_for_out_of_bounds(&self, start: &Point<u32>, end: &Point<u32>) -> Result<(), RendererError> {
         let (width, height) = self.buffer.dimensions();
         if start.x >= width || start.y >= height {
             Err(RendererError::PixelOutOfImageBounds(width, height, start.clone()))
@@ -257,11 +256,6 @@ mod test {
         let y = Point::new(1, 1);
         let z = x - y;
         assert_eq!(z, Point::new(4, 4));
-    }
-
-    #[test]
-    fn unit_should_return_the_unit_point() {
-        assert_eq!(Point::unit(), Point::new(1, 1));
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {

@@ -14,7 +14,7 @@ use wavefront_obj::mtl::Color;
 use image_writer::lerp;
 
 
-fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point, point_b: Point, point_c: Point) {
+fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point<u32>, point_b: Point<u32>, point_c: Point<u32>) {
     let mut points = vec![point_a, point_b, point_c];
     points.sort_by(|point_a, point_b| (point_a.y).cmp(&(point_b.y)));
     for y in points[0].y..points[2].y + 1 {
@@ -32,7 +32,7 @@ fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point, point_b: Point,
     }
 }
 
-fn draw_triangle(renderer: &mut Renderer, point_a: &Point, point_b: &Point, point_c: &Point, col: &Rgb<u8>) {
+fn draw_triangle(renderer: &mut Renderer, point_a: &Point<u32>, point_b: &Point<u32>, point_c: &Point<u32>, col: &Rgb<u8>) {
     renderer.line(point_a.clone(), point_b.clone(), col.clone());
     renderer.line(point_b.clone(), point_c.clone(), col.clone());
     renderer.line(point_c.clone(), point_a.clone(), col.clone());
