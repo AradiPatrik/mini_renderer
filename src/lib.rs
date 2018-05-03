@@ -91,8 +91,8 @@ struct LineDrawer<'a> {
 impl<'a> LineDrawer<'a> {
     pub fn new(start: Vector2<u32>, end: Vector2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
         let mut drawer = LineDrawer::create_initial_instance(start, end, col, buffer);
-        drawer.invert_line();
-        drawer.switch_points();
+        drawer.make_line_shallow();
+        drawer.order_points();
         drawer
     }
 
@@ -106,7 +106,7 @@ impl<'a> LineDrawer<'a> {
         }
     }
 
-    fn invert_line(&mut self) {
+    fn make_line_shallow(&mut self) {
         let x_distance = (self.start.x as i32 - self.end.x as i32).abs() as u32;
         let y_distance = (self.start.y as i32 - self.end.y as i32).abs() as u32;
         if y_distance > x_distance {
@@ -116,7 +116,7 @@ impl<'a> LineDrawer<'a> {
         }
     }
 
-    fn switch_points(&mut self) {
+    fn order_points(&mut self) {
         if self.start.x > self.end.x {
             mem::swap(&mut self.start, &mut self.end);
         }
