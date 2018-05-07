@@ -4,3 +4,4 @@
 *.tga
 test_bin
 image.png
+.vscode/settings.json
