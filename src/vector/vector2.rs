@@ -137,7 +137,7 @@ mod test {
     }
 
     #[test]
-    fn should_be_able_to_substract_vec2() {
+    fn should_be_able_to_subtract_vec2() {
         let x = Vector2::new(5, 5);
         let y = Vector2::new(1, 1);
         let z = x - y;
@@ -182,7 +182,7 @@ mod test {
     }
 
     #[test]
-    fn shoudl_be_able_to_dot_two_vec3s() {
+    fn should_be_able_to_dot_two_vec3s() {
         let vec1 = Vector3::new(1.0, 2.0, 3.0);
         let vec2 = Vector3::new(2.0, 3.0, 5.0);
         assert_eq!(23.0, vec1.dot(vec2));
