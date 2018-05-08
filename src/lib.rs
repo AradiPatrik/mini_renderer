@@ -5,7 +5,7 @@ use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
 pub mod vector;
-use vector::vector2::Vector2;
+use vector::vector::Vector2;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {

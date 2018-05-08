@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 extern crate image;
 extern crate wavefront_obj;
 extern crate image_writer;
@@ -7,10 +9,8 @@ use std::io::BufReader;
 use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use image_writer::{Renderer, vector::vector2::Vector2};
+use image_writer::{Renderer, vector::vector::Vector2};
 use image::{Rgb, ImageRgb8};
-use wavefront_obj::obj::Vertex;
-use wavefront_obj::mtl::Color;
 use image_writer::lerp;
 
 
@@ -18,24 +18,23 @@ fn draw_filled_triangle(renderer: &mut Renderer, point_a: Vector2<u32>, point_b:
     let mut points = vec![point_a, point_b, point_c];
     points.sort_by(|point_a, point_b| (point_a.y).cmp(&(point_b.y)));
     for y in points[0].y..points[2].y + 1 {
-        let mut x_left= 0;
-        if y <= points[1].y {
+        let x_left = if y <= points[1].y {
             let left_lerp_amount = (y - points[0].y) as f64 / (points[1].y - points[0].y) as f64;
-            x_left = lerp(points[0].x, points[1].x, left_lerp_amount);
+            lerp(points[0].x, points[1].x, left_lerp_amount)
         } else {
             let left_lerp_amount = (y - points[1].y) as f64 / (points[2].y - points[1].y) as f64;
-            x_left = lerp(points[1].x, points[2].x, left_lerp_amount);
-        }
+            lerp(points[1].x, points[2].x, left_lerp_amount)
+        };
         let right_lerp_amount = (y - points[0].y) as f64 / (points[2].y - points[0].y) as f64;
         let x_right = lerp(points[0].x, points[2].x, right_lerp_amount);
-        renderer.line(Vector2::new(x_left, y), Vector2::new(x_right, y), Rgb([60, 10, 150]));
+        renderer.line(Vector2::new(x_left, y), Vector2::new(x_right, y), Rgb([60, 10, 150])).unwrap();
     }
 }
 
 fn draw_triangle(renderer: &mut Renderer, point_a: &Vector2<u32>, point_b: &Vector2<u32>, point_c: &Vector2<u32>, col: &Rgb<u8>) {
-    renderer.line(point_a.clone(), point_b.clone(), col.clone());
-    renderer.line(point_b.clone(), point_c.clone(), col.clone());
-    renderer.line(point_c.clone(), point_a.clone(), col.clone());
+    renderer.line(point_a.clone(), point_b.clone(), col.clone()).unwrap();
+    renderer.line(point_b.clone(), point_c.clone(), col.clone()).unwrap();
+    renderer.line(point_c.clone(), point_a.clone(), col.clone()).unwrap();
 }
 
 fn main() {
