@@ -9,7 +9,7 @@ use wavefront_obj::obj::Primitive;
 fn should_be_able_to_load_cube() {
     let mut reader = BufReader::new(File::open("resources/cube.obj").unwrap());
     let mut cube_source= String::new();
-    reader.read_to_string(&mut cube_source);
+    reader.read_to_string(&mut cube_source).unwrap();
     let cube_obj = obj::parse(cube_source).unwrap();
     let cube = &cube_obj.objects[0];
     for geometry in &cube.geometry {

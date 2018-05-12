@@ -2,6 +2,20 @@ use std::ops::{Add, Sub, Mul};
 use num::traits::Num;
 use num::FromPrimitive;
 
+macro_rules! impl_from_vec3 {
+    ($to:ty; $($from:ty),*) => {
+        $(impl<'a> From<&'a Vector3<$from>> for Vector3<$to> {
+            fn from(src: &'a Vector3<$from>) -> Vector3<$to> {
+                Vector3::new(
+                    src.x as $to,
+                    src.y as $to,
+                    src.z as $to
+                )
+            }
+        })*
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Scalar<T: Num + Copy>(T);
 
@@ -70,18 +84,12 @@ impl<T: Num + Copy> Vector3<T> {
     }
 }
 
-impl<T: Num + Copy + FromPrimitive> Vector3<T> {
-    pub fn cross (&self, rhs: &Vector3<T>) -> Vector3<T> {
-        Vector3::new(
-            self.y * rhs.z - rhs.y * self.z,
-            (self.x * rhs.z - rhs.x * self.z) * match T::from_i32(-1) {
-                Some(x) => x,
-                None => panic!("You can only cross vectors of signed values")
-            },
-            self.x * rhs.y - rhs.x * self.y
-        )
-    }
-}
+// impl<T: Num + Copy + FromPrimitive> Vector3<T> {
+//     pub fn cross (&self, rhs: &Vector3<T>) -> Vector3<T>
+//         where Vector{
+//
+//     }
+// }
 
 impl<'a, T: Num + Copy> Add<&'a Vector3<T>> for &'a Vector3<T> {
     type Output = Vector3<T>;
@@ -114,6 +122,14 @@ impl<'a, T: Num + Copy> Mul<&'a Vector3<T>> for Scalar<T> {
         rhs * self
     }
 }
+
+impl_from_vec3!(i64; i64, i32, i16, i8, u32, u16, u8);
+impl_from_vec3!(i32; i32, i16, i8, u16, u8);
+impl_from_vec3!(i16; i16, i8, u8);
+impl_from_vec3!(u64; u64, u32, u16, u8);
+impl_from_vec3!(u32; u32, u16, u8);
+impl_from_vec3!(u16; u16, u8);
+impl_from_vec3!(u8; u8);
 
 #[cfg(test)]
 mod test {
@@ -203,11 +219,22 @@ mod test {
         assert_eq!(&vector1 * Scalar(3.0), Scalar(3.0) * &vector1);
     }
 
+    // #[test]
+    // fn should_be_able_to_cross_vec3s() {
+    //     let x_unit = Vector3::new(1, 0, 0);
+    //     let y_unit = Vector3::new(0, 1, 0);
+    //     let z_unit = Vector3::new(0, 0, 1);
+    //     assert_eq!(x_unit.cross(&y_unit), z_unit);
+    // }
+
     #[test]
-    fn should_be_able_to_cross_vec3s() {
-        let x_unit = Vector3::new(1, 0, 0);
-        let y_unit = Vector3::new(0, 1, 0);
-        let z_unit = Vector3::new(0, 0, 1);
-        assert_eq!(x_unit.cross(&y_unit), z_unit);
+    fn test_conversions_vec3() {
+        let x: Vector3<u8> = Vector3::new(3, 3, 3);
+        let _a: Vector3<u16> = Vector3::from(&x);
+        let _b: Vector3<u32> = Vector3::from(&x);
+        let _c: Vector3<u64> = Vector3::from(&x);
+        let _d: Vector3<i16> = Vector3::from(&x);
+        let _e: Vector3<i32> = Vector3::from(&x);
+        let _f: Vector3<i64> = Vector3::from(&x);
     }
 }
