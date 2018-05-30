@@ -1,16 +1,15 @@
 extern crate image;
 extern crate wavefront_obj;
 extern crate num;
+extern crate cgmath;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
-pub mod vector;
-use vector::Vector2;
-use vector::Vector2u;
+use cgmath::Point2;
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
-    PixelOutOfImageBounds(u32, u32, Vector2u)
+    PixelOutOfImageBounds(u32, u32, Point2<u32>)
 }
 
 pub struct Renderer {
@@ -32,10 +31,8 @@ impl Renderer {
         }
     }
 
-    pub fn line(&mut self, start: Vector2u, end: Vector2u, col: Rgb<u8>) -> Result<(), RendererError> {
-        if let Err(error) = self.check_for_out_of_bounds(&start, &end) {
-            return Err(error);
-        }
+    pub fn line(&mut self, start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
+        self.check_for_out_of_bounds(&start, &end)?;
         LineDrawer::new(start, end, col, &mut self.buffer).draw_line();
         Ok(())
     }
@@ -49,8 +46,8 @@ impl Renderer {
         self.line(point_c, point_a, col)
     }
 
-    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Vector2u {
-        let mut result = Vector2::new(0, 0);
+    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point2<u32> {
+        let mut result = Point2::new(0, 0);
         result.x = ((vertex.x + 1.0) * (self.buffer.width() - 1) as f64 / 2.0) as u32;
         result.y = ((vertex.y + 1.0) * (self.buffer.height() - 1) as f64 / 2.0) as u32;
         result
@@ -64,7 +61,7 @@ impl Renderer {
         self.buffer
     }
 
-    fn check_for_out_of_bounds(&self, start: &Vector2u, end: &Vector2u) -> Result<(), RendererError> {
+    fn check_for_out_of_bounds(&self, start: &Point2<u32>, end: &Point2<u32>) -> Result<(), RendererError> {
         let (width, height) = self.buffer.dimensions();
         if start.x >= width || start.y >= height {
             Err(RendererError::PixelOutOfImageBounds(width, height, start.clone()))
@@ -82,22 +79,22 @@ pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
 }
 
 struct LineDrawer<'a> {
-    start: Vector2u,
-    end: Vector2u,
+    start: Point2<u32>,
+    end: Point2<u32>,
     col: Rgb<u8>,
     is_steep: bool,
     buffer: &'a mut RgbImage,
 }
 
 impl<'a> LineDrawer<'a> {
-    pub fn new(start: Vector2u, end: Vector2u, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+    pub fn new(start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
         let mut drawer = LineDrawer::create_initial_instance(start, end, col, buffer);
         drawer.make_line_shallow();
         drawer.order_points();
         drawer
     }
 
-    fn create_initial_instance(start: Vector2u, end: Vector2u, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+    fn create_initial_instance(start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
         LineDrawer {
             start,
             end,
@@ -156,16 +153,9 @@ mod test {
     }
 
     #[test]
-    fn should_be_able_to_create_a_point() {
-        let a = Vector2::new(2, 3);
-        assert_eq!(a.x, 2);
-        assert_eq!(a.y, 3);
-    }
-
-    #[test]
     fn draw_a_zero_length_line_should_draw_a_dot() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Vector2::new(0, 0), Vector2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Point2::new(0, 0), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
         assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
@@ -175,28 +165,28 @@ mod test {
     #[test]
     fn draw_even_line() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Vector2::new(0, 0), Vector2::new(1, 1), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Point2::new(0, 0), Point2::new(1, 1), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn parameter_order_should_not_matter() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Vector2::new(1, 1), Vector2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.line(Point2::new(1, 1), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn over_indexing_should_result_in_error() {
         let mut renderer = Renderer::new(2, 2);
-        let result = renderer.line(Vector2::new(2, 2), Vector2::new(2, 2), Rgb([1, 1, 1]));
-        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Vector2::new(2, 2))));
+        let result = renderer.line(Point2::new(2, 2), Point2::new(2, 2), Rgb([1, 1, 1]));
+        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
     }
 
     #[test]
     fn should_be_able_to_draw_shallow_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Vector2::new(0, 0), Vector2::new(1, 0), Rgb([1,1,1]));
+        let draw_result = renderer.line(Point2::new(0, 0), Point2::new(1, 0), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_flat_line(&renderer);
     }
@@ -204,7 +194,7 @@ mod test {
     #[test]
     fn should_be_able_to_draw_steep_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Vector2::new(0, 0), Vector2::new(0, 1), Rgb([1,1,1]));
+        let draw_result = renderer.line(Point2::new(0, 0), Point2::new(0, 1), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_straight_vertical_line(&renderer);
     }

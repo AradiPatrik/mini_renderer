@@ -2,6 +2,7 @@
 
 extern crate image;
 extern crate wavefront_obj;
+extern crate cgmath;
 extern crate image_writer;
 
 use std::io::prelude::*;
@@ -9,12 +10,13 @@ use std::io::BufReader;
 use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use image_writer::{Renderer, vector::Vector2};
+use image_writer::{Renderer};
 use image::{Rgb, ImageRgb8};
 use image_writer::lerp;
+use cgmath::Point2;
 
 
-fn draw_filled_triangle(renderer: &mut Renderer, point_a: Vector2<u32>, point_b: Vector2<u32>, point_c: Vector2<u32>) {
+fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point2<u32>, point_b: Point2<u32>, point_c: Point2<u32>) {
     let mut points = vec![point_a, point_b, point_c];
     points.sort_by(|point_a, point_b| (point_a.y).cmp(&(point_b.y)));
     for y in points[0].y..points[2].y + 1 {
@@ -27,11 +29,11 @@ fn draw_filled_triangle(renderer: &mut Renderer, point_a: Vector2<u32>, point_b:
         };
         let right_lerp_amount = (y - points[0].y) as f64 / (points[2].y - points[0].y) as f64;
         let x_right = lerp(points[0].x, points[2].x, right_lerp_amount);
-        renderer.line(Vector2::new(x_left, y), Vector2::new(x_right, y), Rgb([60, 10, 150])).unwrap();
+        renderer.line(Point2::new(x_left, y), Point2::new(x_right, y), Rgb([60, 10, 150])).unwrap();
     }
 }
 
-fn draw_triangle(renderer: &mut Renderer, point_a: &Vector2<u32>, point_b: &Vector2<u32>, point_c: &Vector2<u32>, col: &Rgb<u8>) {
+fn draw_triangle(renderer: &mut Renderer, point_a: &Point2<u32>, point_b: &Point2<u32>, point_c: &Point2<u32>, col: &Rgb<u8>) {
     renderer.line(point_a.clone(), point_b.clone(), col.clone()).unwrap();
     renderer.line(point_b.clone(), point_c.clone(), col.clone()).unwrap();
     renderer.line(point_c.clone(), point_a.clone(), col.clone()).unwrap();
