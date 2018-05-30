@@ -5,15 +5,16 @@ extern crate cgmath;
 use image::{ImageBuffer, RgbImage, Rgb};
 use std::mem;
 use wavefront_obj::obj::Vertex;
-use cgmath::Point2;
+use cgmath::{Point2, Vector3, BaseNum};
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
     PixelOutOfImageBounds(u32, u32, Point2<u32>)
 }
 
+#[derive(Debug, Clone)]
 pub struct Renderer {
-    buffer: RgbImage
+    buffer: RgbImage,
 }
 
 impl Renderer {
@@ -31,8 +32,15 @@ impl Renderer {
         }
     }
 
-    pub fn line(&mut self, start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
-        self.check_for_out_of_bounds(&start, &end)?;
+    pub fn draw_point(&mut self, point: &Point2<u32>, color: Rgb<u8>) -> Result<(), RendererError> {
+        self.check_for_out_of_bounds(point)?;
+        self.buffer[(point.x, point.y)] = color;
+        Ok(())
+    }
+
+    pub fn draw_line(&mut self, start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
+        self.check_for_out_of_bounds(&start)?;
+        self.check_for_out_of_bounds(&end)?;
         LineDrawer::new(start, end, col, &mut self.buffer).draw_line();
         Ok(())
     }
@@ -41,9 +49,9 @@ impl Renderer {
         let point_a = self.vertex_into_image_space_2d(vertex_a);
         let point_b = self.vertex_into_image_space_2d(vertex_b);
         let point_c = self.vertex_into_image_space_2d(vertex_c);
-        self.line(point_a.clone(), point_b.clone(), col)?;
-        self.line(point_b, point_c.clone(), col)?;
-        self.line(point_c, point_a, col)
+        self.draw_line(point_a.clone(), point_b.clone(), col)?;
+        self.draw_line(point_b, point_c.clone(), col)?;
+        self.draw_line(point_c, point_a, col)
     }
 
     fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point2<u32> {
@@ -61,12 +69,10 @@ impl Renderer {
         self.buffer
     }
 
-    fn check_for_out_of_bounds(&self, start: &Point2<u32>, end: &Point2<u32>) -> Result<(), RendererError> {
+    fn check_for_out_of_bounds(&self, point: &Point2<u32>) -> Result<(), RendererError> {
         let (width, height) = self.buffer.dimensions();
-        if start.x >= width || start.y >= height {
-            Err(RendererError::PixelOutOfImageBounds(width, height, start.clone()))
-        } else if end.x >= width || end.y >= height {
-            Err(RendererError::PixelOutOfImageBounds(width, height, end.clone()))
+        if point.x >= width || point.y >= height {
+            Err(RendererError::PixelOutOfImageBounds(width, height, point.clone()))
         } else {
             Ok(())
         }
@@ -76,6 +82,50 @@ impl Renderer {
 #[inline]
 pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
     (start as f64 + (end as i32 - start as i32) as f64 * lerp_amount).round() as u32
+}
+
+pub struct Triangle2<S> {
+    pub a: Point2<S>,
+    pub b: Point2<S>,
+    pub c: Point2<S>
+}
+
+impl<S: BaseNum + PartialOrd> Triangle2<S> {
+    pub fn new(a: Point2<S>, b: Point2<S>, c: Point2<S>) -> Self {
+        Triangle2 {a, b, c}
+    }
+
+    pub fn get_bary_coords(&self, p: Point2<S>) -> Point2<f64> {
+        let ab_vec = &self.b.cast::<f64>().unwrap() - &self.a.cast::<f64>().unwrap();
+        let ac_vec = &self.c.cast::<f64>().unwrap() - &self.a.cast::<f64>().unwrap();
+        let pa_vec = &self.a.cast::<f64>().unwrap() - p.cast::<f64>().unwrap();
+        let x_coords = Vector3::new(ab_vec.x, ac_vec.x, pa_vec.x);
+        let y_coords = Vector3::new(ab_vec.y, ac_vec.y, pa_vec.y);
+        let cross_product = x_coords.cross(y_coords).cast::<f64>().unwrap();
+        Point2::new(cross_product.x / cross_product.z, cross_product.y / cross_product.z)
+        
+    }
+
+    pub fn is_inside_point(&self, p: Point2<S>) -> bool {
+        let bary_coords = self.get_bary_coords(p);
+        bary_coords.x >= 0.0 && bary_coords.y >= 0.0 && bary_coords.x + bary_coords.y <= 1.0
+    }
+
+    pub fn get_bounding_box<'a>(&self) -> (Point2<S>, Point2<S>) {
+        use std::cmp::Ordering::Less;
+        let x_coordinate_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.x.partial_cmp(&q.x).unwrap_or(Less)};
+        let y_coordiante_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.y.partial_cmp(&q.y).unwrap_or(Less)};
+        let points = [&self.a, &self.b, &self.c];
+        // It is okay to unwrap the results here because we know for a fact, that points is not an empty slice
+        let min_x_point = points.iter().min_by(x_coordinate_comparator).unwrap();
+        let min_y_point = points.iter().min_by(y_coordiante_comparator).unwrap();
+        let max_x_point = points.iter().max_by(x_coordinate_comparator).unwrap();
+        let max_y_point = points.iter().max_by(y_coordiante_comparator).unwrap();
+        (
+            Point2::new(min_x_point.x, min_y_point.y),
+            Point2::new(max_x_point.x, max_y_point.y)
+        )
+    }
 }
 
 struct LineDrawer<'a> {
@@ -155,7 +205,7 @@ mod test {
     #[test]
     fn draw_a_zero_length_line_should_draw_a_dot() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point2::new(0, 0), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
         assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
@@ -165,28 +215,28 @@ mod test {
     #[test]
     fn draw_even_line() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point2::new(0, 0), Point2::new(1, 1), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(1, 1), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn parameter_order_should_not_matter() {
         let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.line(Point2::new(1, 1), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+        assert!(renderer.draw_line(Point2::new(1, 1), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
         renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
     }
 
     #[test]
     fn over_indexing_should_result_in_error() {
         let mut renderer = Renderer::new(2, 2);
-        let result = renderer.line(Point2::new(2, 2), Point2::new(2, 2), Rgb([1, 1, 1]));
+        let result = renderer.draw_line(Point2::new(2, 2), Point2::new(2, 2), Rgb([1, 1, 1]));
         assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
     }
 
     #[test]
     fn should_be_able_to_draw_shallow_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Point2::new(0, 0), Point2::new(1, 0), Rgb([1,1,1]));
+        let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(1, 0), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_flat_line(&renderer);
     }
@@ -194,7 +244,7 @@ mod test {
     #[test]
     fn should_be_able_to_draw_steep_line() {
         let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.line(Point2::new(0, 0), Point2::new(0, 1), Rgb([1,1,1]));
+        let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(0, 1), Rgb([1,1,1]));
         assert!(draw_result.is_ok());
         renderer_should_have_drawn_straight_vertical_line(&renderer);
     }
@@ -244,6 +294,55 @@ mod test {
         assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
+    }
+
+    #[test]
+    fn should_be_able_to_draw_point() {
+        let mut renderer = Renderer::new(2, 2);
+        let result = renderer.draw_point(&Point2::new(1, 1), Rgb([1, 1, 1]));
+        assert_eq!(Ok(()), result);
+        assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
+    }
+
+    #[test]
+    fn over_indexing_point_should_return_error() {
+        let mut renderer = Renderer::new(2, 2);
+        let result = renderer.draw_point(&Point2::new(2, 2), Rgb([1, 1, 1]));
+        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
+    }
+
+    #[test]
+    fn should_be_able_to_create_triangle() {
+        let triangle = Triangle2::new(Point2::new(0, 0), Point2::new(0, 2), Point2::new(2, 0));
+        assert_eq!(triangle.a, Point2::new(0, 0));
+        assert_eq!(triangle.b, Point2::new(0, 2));
+        assert_eq!(triangle.c, Point2::new(2, 0));
+    }
+
+    #[test]
+    fn test_inside_point() {
+        let inside_point = Point2::new(10.0, 3.2);
+        let outside_point_left = Point2::new(-3.0, 3.2);
+        let outside_point_right = Point2::new(16.0, 4.0);
+        let outside_point_down = Point2::new(5.0, -3.0);
+        let outside_point_up = Point2::new(4.0, 16.0);
+        let triangle = Triangle2::new(Point2::new(0.0, 0.0), Point2::new(10.0, 10.0), Point2::new(14.0, 0.0));
+        assert!(triangle.is_inside_point(inside_point));
+        assert!(!triangle.is_inside_point(outside_point_left));
+        assert!(!triangle.is_inside_point(outside_point_right));
+        assert!(!triangle.is_inside_point(outside_point_down));
+        assert!(!triangle.is_inside_point(outside_point_up));
+    }
+
+    #[test]
+    fn test_get_bounding_box() {
+        let triangle = Triangle2::new(Point2::new(0.0, 0.0), Point2::new(10.0, 10.0), Point2::new(14.0, -1.0));
+        assert_eq!(triangle.get_bounding_box(), (Point2::new(0.0, -1.0), Point2::new(14.0, 10.0)));
+    }
+
+    #[test]
+    fn should_be_able_to_draw_triangle_from_vertices() {
+        
     }
 
     fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {

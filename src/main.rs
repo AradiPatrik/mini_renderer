@@ -10,7 +10,7 @@ use std::io::BufReader;
 use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use image_writer::{Renderer};
+use image_writer::{Renderer, Triangle2};
 use image::{Rgb, ImageRgb8};
 use image_writer::lerp;
 use cgmath::Point2;
@@ -29,35 +29,39 @@ fn draw_filled_triangle(renderer: &mut Renderer, point_a: Point2<u32>, point_b: 
         };
         let right_lerp_amount = (y - points[0].y) as f64 / (points[2].y - points[0].y) as f64;
         let x_right = lerp(points[0].x, points[2].x, right_lerp_amount);
-        renderer.line(Point2::new(x_left, y), Point2::new(x_right, y), Rgb([60, 10, 150])).unwrap();
+        renderer.draw_line(Point2::new(x_left, y), Point2::new(x_right, y), Rgb([60, 10, 150])).unwrap();
+    }
+}
+
+fn draw_optimized_filled_triangle(renderer: &mut Renderer, triangle: &Triangle2<u32>) {
+    let bounding_box = triangle.get_bounding_box();
+    for x in bounding_box.0.x ..= bounding_box.1.x {
+        for y in bounding_box.0.y ..= bounding_box.1.y {
+            if triangle.is_inside_point(Point2::new(x, y).clone()) {
+                renderer.draw_point(&Point2::new(x, y), Rgb([128, 180, 50])).unwrap();
+            }
+        }
     }
 }
 
 fn draw_triangle(renderer: &mut Renderer, point_a: &Point2<u32>, point_b: &Point2<u32>, point_c: &Point2<u32>, col: &Rgb<u8>) {
-    renderer.line(point_a.clone(), point_b.clone(), col.clone()).unwrap();
-    renderer.line(point_b.clone(), point_c.clone(), col.clone()).unwrap();
-    renderer.line(point_c.clone(), point_a.clone(), col.clone()).unwrap();
+    renderer.draw_line(point_a.clone(), point_b.clone(), col.clone()).unwrap();
+    renderer.draw_line(point_b.clone(), point_c.clone(), col.clone()).unwrap();
+    renderer.draw_line(point_c.clone(), point_a.clone(), col.clone()).unwrap();
 }
 
 fn main() {
-    // let mut renderer = Renderer::new(500, 500);
-    // let red = Rgb([255, 0, 0]);
-    // let green = Rgb([0, 255, 0]);
-    // let blue = Rgb([0, 0, 255]);
-    // let white = Rgb([255, 255, 255]);
-    // let tri_a = (Vector2::new(10, 70), Vector2::new(50, 160), Vector2::new(70, 80));
-    // let tri_b = (Vector2::new(180, 50), Vector2::new(150, 1), Vector2::new(70, 180));
-    // let tri_c = (Vector2::new(180, 150), Vector2::new(120, 160), Vector2::new(130, 180));
-    // draw_triangle(&mut renderer, &tri_a.0, &tri_a.1, &tri_a.2, &red);
-    // draw_triangle(&mut renderer, &tri_b.0, &tri_b.1, &tri_b.2, &white);
-    // draw_triangle(&mut renderer, &tri_c.0, &tri_c.1, &tri_c.2, &green);
-    // draw_filled_triangle(&mut renderer, tri_a.0, tri_a.1, tri_a.2);
-    // draw_filled_triangle(&mut renderer, tri_b.0, tri_b.1, tri_b.2);
-    // draw_filled_triangle(&mut renderer, tri_c.0, tri_c.1, tri_c.2);
+    let mut renderer = Renderer::new(500, 500);
+    let tri_a = (Point2::new(10, 70), Point2::new(50, 160), Point2::new(70, 80));
+    let tri_b = (Point2::new(180, 50), Point2::new(150, 1), Point2::new(70, 180));
+    let tri_c = (Point2::new(180, 150), Point2::new(120, 160), Point2::new(130, 180));
+    draw_optimized_filled_triangle(&mut renderer, &Triangle2::new(tri_a.0, tri_a.1, tri_a.2));
+    draw_optimized_filled_triangle(&mut renderer, &Triangle2::new(tri_b.0, tri_b.1, tri_b.2));
+    draw_optimized_filled_triangle(&mut renderer, &Triangle2::new(tri_c.0, tri_c.1, tri_c.2));
 
-    draw_obj();
+    // draw_obj();
 
-    // write_renderer(renderer);
+    write_renderer(renderer);
 
 }
 
@@ -82,7 +86,7 @@ fn draw_obj() {
                 let vertex_c = the_mesh.vertices[c_ind];
                 renderer.triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([255, 255, 255])).unwrap();
             } else {
-                panic!("Invalid obj format (line or point detected)");
+                panic!("Invalid obj format (draw_line or point detected)");
             }
         }
     }
