@@ -9,7 +9,8 @@ use cgmath::{Point2, Vector3, BaseNum};
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
-    PixelOutOfImageBounds(u32, u32, Point2<u32>)
+    PixelOutOfImageBounds(u32, u32, Point2<u32>),
+    NotInNormalizedDeviceCoords(Vertex)
 }
 
 #[derive(Debug, Clone)]
@@ -32,33 +33,16 @@ impl Renderer {
         }
     }
 
-    pub fn draw_point(&mut self, point: &Point2<u32>, color: Rgb<u8>) -> Result<(), RendererError> {
-        self.check_for_out_of_bounds(point)?;
-        self.buffer[(point.x, point.y)] = color;
+    pub fn draw_triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
+        let mut drawer = TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+        drawer.draw(DrawMode::Wireframe, col);
         Ok(())
     }
 
-    pub fn draw_line(&mut self, start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>) -> Result<(), RendererError> {
-        self.check_for_out_of_bounds(&start)?;
-        self.check_for_out_of_bounds(&end)?;
-        LineDrawer::new(start, end, col, &mut self.buffer).draw_line();
+    pub fn draw_filled_triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
+        let mut drawer = TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+        drawer.draw(DrawMode::Normal, col);
         Ok(())
-    }
-
-    pub fn triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
-        let point_a = self.vertex_into_image_space_2d(vertex_a);
-        let point_b = self.vertex_into_image_space_2d(vertex_b);
-        let point_c = self.vertex_into_image_space_2d(vertex_c);
-        self.draw_line(point_a.clone(), point_b.clone(), col)?;
-        self.draw_line(point_b, point_c.clone(), col)?;
-        self.draw_line(point_c, point_a, col)
-    }
-
-    fn vertex_into_image_space_2d(&self, vertex: &Vertex) -> Point2<u32> {
-        let mut result = Point2::new(0, 0);
-        result.x = ((vertex.x + 1.0) * (self.buffer.width() - 1) as f64 / 2.0) as u32;
-        result.y = ((vertex.y + 1.0) * (self.buffer.height() - 1) as f64 / 2.0) as u32;
-        result
     }
 
     pub fn get_buffer_reference(&self) -> &RgbImage {
@@ -68,20 +52,50 @@ impl Renderer {
     pub fn unpack(self) -> RgbImage {
         self.buffer
     }
-
-    fn check_for_out_of_bounds(&self, point: &Point2<u32>) -> Result<(), RendererError> {
-        let (width, height) = self.buffer.dimensions();
-        if point.x >= width || point.y >= height {
-            Err(RendererError::PixelOutOfImageBounds(width, height, point.clone()))
-        } else {
-            Ok(())
-        }
-    }
 }
 
 #[inline]
 pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
     (start as f64 + (end as i32 - start as i32) as f64 * lerp_amount).round() as u32
+}
+
+pub struct BoundingBox2<S> {
+    pub lower_left: Point2<S>,
+    pub upper_right: Point2<S>
+}
+
+impl<S: BaseNum + PartialOrd> BoundingBox2<S> {
+    pub fn from_triangle2(triangle: &Triangle2<S>) -> BoundingBox2<S> {
+        use std::cmp::Ordering::Less;
+        let x_coordinate_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.x.partial_cmp(&q.x).unwrap_or(Less)};
+        let y_coordiante_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.y.partial_cmp(&q.y).unwrap_or(Less)};
+        let points = [&triangle.a, &triangle.b, &triangle.c];
+        // It is okay to unwrap the results here because we know for a fact, that points is not an empty slice
+        let min_x_point = points.iter().min_by(x_coordinate_comparator).unwrap();
+        let min_y_point = points.iter().min_by(y_coordiante_comparator).unwrap();
+        let max_x_point = points.iter().max_by(x_coordinate_comparator).unwrap();
+        let max_y_point = points.iter().max_by(y_coordiante_comparator).unwrap();
+        BoundingBox2 {
+            lower_left: Point2::new(min_x_point.x, min_y_point.y),
+            upper_right: Point2::new(max_x_point.x, max_y_point.y)
+        }
+    }
+
+    pub fn min_x(&self) -> S {
+        self.lower_left.x
+    }
+
+    pub fn min_y(&self) -> S {
+        self.lower_left.y
+    }
+
+    pub fn max_x(&self) -> S {
+        self.upper_right.x
+    }
+
+    pub fn max_y(&self) -> S {
+        self.upper_right.y
+    }
 }
 
 pub struct Triangle2<S> {
@@ -96,6 +110,7 @@ impl<S: BaseNum + PartialOrd> Triangle2<S> {
     }
 
     pub fn get_bary_coords(&self, p: Point2<S>) -> Point2<f64> {
+        // TODO: do something about ugly unwraps
         let ab_vec = &self.b.cast::<f64>().unwrap() - &self.a.cast::<f64>().unwrap();
         let ac_vec = &self.c.cast::<f64>().unwrap() - &self.a.cast::<f64>().unwrap();
         let pa_vec = &self.a.cast::<f64>().unwrap() - p.cast::<f64>().unwrap();
@@ -111,20 +126,92 @@ impl<S: BaseNum + PartialOrd> Triangle2<S> {
         bary_coords.x >= 0.0 && bary_coords.y >= 0.0 && bary_coords.x + bary_coords.y <= 1.0
     }
 
-    pub fn get_bounding_box<'a>(&self) -> (Point2<S>, Point2<S>) {
-        use std::cmp::Ordering::Less;
-        let x_coordinate_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.x.partial_cmp(&q.x).unwrap_or(Less)};
-        let y_coordiante_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.y.partial_cmp(&q.y).unwrap_or(Less)};
-        let points = [&self.a, &self.b, &self.c];
-        // It is okay to unwrap the results here because we know for a fact, that points is not an empty slice
-        let min_x_point = points.iter().min_by(x_coordinate_comparator).unwrap();
-        let min_y_point = points.iter().min_by(y_coordiante_comparator).unwrap();
-        let max_x_point = points.iter().max_by(x_coordinate_comparator).unwrap();
-        let max_y_point = points.iter().max_by(y_coordiante_comparator).unwrap();
-        (
-            Point2::new(min_x_point.x, min_y_point.y),
-            Point2::new(max_x_point.x, max_y_point.y)
+    pub fn get_bounding_box(&self) -> BoundingBox2<S> {
+        BoundingBox2::from_triangle2(&self)
+    }
+}
+
+enum DrawMode {
+    Normal,
+    Wireframe
+}
+
+struct TriangleDrawer<'a> {
+    triangle: Triangle2<u32>,
+    buffer: &'a mut RgbImage
+}
+
+impl<'a> TriangleDrawer<'a> {
+    pub fn from_vertices(a: &Vertex, b: &Vertex, c: &Vertex, buffer: &'a mut RgbImage) -> Result<Self, RendererError> {
+        let mapper = VertexCoordinateMapper::new(buffer.width(), buffer.height());
+        Ok (
+            TriangleDrawer {
+                triangle: Triangle2::new (
+                    mapper.map_vertex_coords_to_pixel_coord(a)?,
+                    mapper.map_vertex_coords_to_pixel_coord(b)?,
+                    mapper.map_vertex_coords_to_pixel_coord(c)?
+                ),
+                buffer
+            }
         )
+    }
+
+    pub fn draw(&mut self, draw_mode: DrawMode, col: Rgb<u8>) {
+        match draw_mode {
+            DrawMode::Normal => {
+                self.draw_outline(col);
+                self.fill_triangle(col);
+            },
+            DrawMode::Wireframe => {
+                self.draw_outline(col);
+            }
+        }
+    }
+
+    fn draw_outline(&mut self, col: Rgb<u8>) {
+        LineDrawer::new(self.triangle.a.clone(), self.triangle.b.clone(), col, &mut self.buffer).draw_line();
+        LineDrawer::new(self.triangle.b.clone(), self.triangle.c.clone(), col, &mut self.buffer).draw_line();
+        LineDrawer::new(self.triangle.c.clone(), self.triangle.a.clone(), col, &mut self.buffer).draw_line();
+    }
+
+    fn fill_triangle(&mut self, col: Rgb<u8>) {
+        let bounding_box = self.triangle.get_bounding_box();
+        for x in bounding_box.min_x() ..= bounding_box.max_x() {
+            for y in bounding_box.min_y() ..= bounding_box.max_y() {
+                if self.triangle.is_inside_point(Point2::new(x, y).clone()) {
+                    self.buffer[(x, y)] = col;
+                }
+            }
+        }
+    }
+}
+
+struct VertexCoordinateMapper {
+    buffer_width: u32,
+    buffer_height: u32
+}
+
+impl VertexCoordinateMapper {
+    fn new(buffer_width: u32, buffer_height: u32) -> Self {
+        VertexCoordinateMapper { buffer_width, buffer_height }
+    }
+
+    fn map_vertex_coords_to_pixel_coord(&self, v: &Vertex) -> Result<Point2<u32>, RendererError> {
+        check_if_in_normalized_device_coordinates(v)?;
+        Ok (
+            Point2::new (
+                ((v.x + 1.0) * (self.buffer_width - 1) as f64 / 2.0) as u32,
+                ((v.y + 1.0) * (self.buffer_height - 1) as f64 / 2.0) as u32
+            )
+        )
+    }
+}
+
+fn check_if_in_normalized_device_coordinates(v: &Vertex) -> Result<(), RendererError> {
+    if v.x > 1.0 || v.y > 1.0 || v.x < -1.0 || v.y < -1.0 {
+        Err(RendererError::NotInNormalizedDeviceCoords(v.clone()))
+    } else {
+        Ok(())
     }
 }
 
@@ -202,52 +289,54 @@ mod test {
         let _renderer = Renderer::from_buffer(image);
     }
 
-    #[test]
-    fn draw_a_zero_length_line_should_draw_a_dot() {
-        let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
-        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
-        assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
-        assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
-    }
+    // TODO change these tests to test LineDrawer instead of Renderer
 
-    #[test]
-    fn draw_even_line() {
-        let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(1, 1), Rgb([1, 1, 1])).is_ok());
-        renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
-    }
+    // #[test]
+    // fn draw_a_zero_length_line_should_draw_a_dot() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+    //     assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
+    //     assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+    //     assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
+    // }
 
-    #[test]
-    fn parameter_order_should_not_matter() {
-        let mut renderer = Renderer::new(2, 2);
-        assert!(renderer.draw_line(Point2::new(1, 1), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
-        renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
-    }
+    // #[test]
+    // fn draw_even_line() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     assert!(renderer.draw_line(Point2::new(0, 0), Point2::new(1, 1), Rgb([1, 1, 1])).is_ok());
+    //     renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
+    // }
 
-    #[test]
-    fn over_indexing_should_result_in_error() {
-        let mut renderer = Renderer::new(2, 2);
-        let result = renderer.draw_line(Point2::new(2, 2), Point2::new(2, 2), Rgb([1, 1, 1]));
-        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
-    }
+    // #[test]
+    // fn parameter_order_should_not_matter() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     assert!(renderer.draw_line(Point2::new(1, 1), Point2::new(0, 0), Rgb([1, 1, 1])).is_ok());
+    //     renderer_should_have_drawn_line_from_bottom_left_to_top_right(&renderer);
+    // }
 
-    #[test]
-    fn should_be_able_to_draw_shallow_line() {
-        let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(1, 0), Rgb([1,1,1]));
-        assert!(draw_result.is_ok());
-        renderer_should_have_drawn_flat_line(&renderer);
-    }
+    // #[test]
+    // fn over_indexing_should_result_in_error() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     let result = renderer.draw_line(Point2::new(2, 2), Point2::new(2, 2), Rgb([1, 1, 1]));
+    //     assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
+    // }
 
-    #[test]
-    fn should_be_able_to_draw_steep_line() {
-        let mut renderer = Renderer::new(2, 2);
-        let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(0, 1), Rgb([1,1,1]));
-        assert!(draw_result.is_ok());
-        renderer_should_have_drawn_straight_vertical_line(&renderer);
-    }
+    // #[test]
+    // fn should_be_able_to_draw_shallow_line() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(1, 0), Rgb([1,1,1]));
+    //     assert!(draw_result.is_ok());
+    //     renderer_should_have_drawn_flat_line(&renderer);
+    // }
+
+    // #[test]
+    // fn should_be_able_to_draw_steep_line() {
+    //     let mut renderer = Renderer::new(2, 2);
+    //     let draw_result = renderer.draw_line(Point2::new(0, 0), Point2::new(0, 1), Rgb([1,1,1]));
+    //     assert!(draw_result.is_ok());
+    //     renderer_should_have_drawn_straight_vertical_line(&renderer);
+    // }
 
     #[test]
     fn should_be_able_to_clear_with_renderer() {
@@ -287,28 +376,13 @@ mod test {
         let vertex_a = Vertex{ x: 0.0, y: 1.0, z: 0.0 };
         let vertex_b = Vertex{ x: 1.0, y: -1.0, z: 0.0};
         let vertex_c = Vertex{ x: -1.0, y: -1.0, z: 0.0};
-        let result = renderer.triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([1, 1, 1]));
+        let result = renderer.draw_triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([1, 1, 1]));
         assert_eq!(Ok(()), result);
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 2)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
-    }
-
-    #[test]
-    fn should_be_able_to_draw_point() {
-        let mut renderer = Renderer::new(2, 2);
-        let result = renderer.draw_point(&Point2::new(1, 1), Rgb([1, 1, 1]));
-        assert_eq!(Ok(()), result);
-        assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
-    }
-
-    #[test]
-    fn over_indexing_point_should_return_error() {
-        let mut renderer = Renderer::new(2, 2);
-        let result = renderer.draw_point(&Point2::new(2, 2), Rgb([1, 1, 1]));
-        assert_eq!(result, Err(RendererError::PixelOutOfImageBounds(2, 2, Point2::new(2, 2))));
     }
 
     #[test]
@@ -337,32 +411,68 @@ mod test {
     #[test]
     fn test_get_bounding_box() {
         let triangle = Triangle2::new(Point2::new(0.0, 0.0), Point2::new(10.0, 10.0), Point2::new(14.0, -1.0));
-        assert_eq!(triangle.get_bounding_box(), (Point2::new(0.0, -1.0), Point2::new(14.0, 10.0)));
+        let bounding_box = triangle.get_bounding_box();
+        assert_eq!(bounding_box.min_x(), 0.0);
+        assert_eq!(bounding_box.min_y(), -1.0);
+        assert_eq!(bounding_box.max_x(), 14.0);
+        assert_eq!(bounding_box.max_y(), 10.0);
     }
 
     #[test]
-    fn should_be_able_to_draw_triangle_from_vertices() {
-        
+    fn should_be_able_to_draw_filled_triangle_from_vertices() {
+        let mut renderer = Renderer::new(4, 4);
+        let bottom_left = Vertex {x: -1.0, y: -1.0, z: 0.0};
+        let tor_right = Vertex {x: 1.0, y: 1.0, z: 0.0};
+        let bottom_right = Vertex {x: 1.0, y: -1.0, z: 0.0};
+        let result = renderer.draw_filled_triangle_2d(&bottom_left, &tor_right, &bottom_right, Rgb([1, 1, 1]));
+        assert_eq!(Ok(()), result);
+        bottom_floor_should_be_filled(&renderer);
+        right_wall_should_be_filled(&renderer);
+        slope_should_be_filled(&renderer);
+        middle_point_should_be_filled(&renderer);
     }
 
-    fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {
+    fn bottom_floor_should_be_filled(renderer: &Renderer) {
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
-        assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
-    }
-
-    fn renderer_should_have_drawn_flat_line(renderer: &Renderer) {
-        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+        assert_eq!(renderer.buffer[(2, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(3, 1)], Rgb([1, 1, 1]));
     }
 
-    fn renderer_should_have_drawn_straight_vertical_line(renderer: &Renderer) {
-        assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
-        assert_eq!(renderer.buffer[(0, 1)], Rgb([1, 1, 1]));
-        assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
+    fn right_wall_should_be_filled(renderer: &Renderer) {
+        assert_eq!(renderer.buffer[(3, 0)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(3, 1)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(3, 2)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(3, 3)], Rgb([1, 1, 1]));
     }
+
+    fn slope_should_be_filled(renderer: &Renderer) {
+        assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
+        assert_eq!(renderer.buffer[(2, 2)], Rgb([1, 1, 1]));
+    }
+
+    fn middle_point_should_be_filled(renderer: &Renderer) {
+        assert_eq!(renderer.buffer[(2, 1)], Rgb([1, 1, 1]));
+    }
+
+    // fn renderer_should_have_drawn_line_from_bottom_left_to_top_right(renderer: &Renderer) {
+    //     assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(1, 1)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+    //     assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
+    // }
+
+    // fn renderer_should_have_drawn_flat_line(renderer: &Renderer) {
+    //     assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
+    //     assert_eq!(renderer.buffer[(1, 0)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(0, 1)], Rgb([0, 0, 0]));
+    // }
+
+    // fn renderer_should_have_drawn_straight_vertical_line(renderer: &Renderer) {
+    //     assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(1, 1)], Rgb([0, 0, 0]));
+    //     assert_eq!(renderer.buffer[(0, 1)], Rgb([1, 1, 1]));
+    //     assert_eq!(renderer.buffer[(1, 0)], Rgb([0, 0, 0]));
+    // }
 }
