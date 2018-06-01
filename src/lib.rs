@@ -273,6 +273,29 @@ impl<'a> LineDrawer<'a> {
     }
 }
 
+pub trait VecFrom<T> {
+    fn from_vertex(vertex: T) -> Self;
+}
+
+impl<'a> VecFrom<&'a Vertex> for cgmath::Vector3<f64> {
+    fn from_vertex(vert: &'a Vertex) -> Self {
+        Vector3 {
+            x: vert.x,
+            y: vert.y,
+            z: vert.z
+        }
+    }
+}
+
+impl VecFrom<Vertex> for cgmath::Vector3<f64> {
+    fn from_vertex(vert: Vertex) -> Self {
+        Vector3 {
+            x: vert.x,
+            y: vert.y,
+            z: vert.z
+        }
+    }
+}
 #[cfg(test)]
 mod test {
     use super::*;
@@ -430,6 +453,22 @@ mod test {
         right_wall_should_be_filled(&renderer);
         slope_should_be_filled(&renderer);
         middle_point_should_be_filled(&renderer);
+    }
+
+
+    #[test]
+    fn should_be_able_to_create_vector3_from_vertex() {
+        let vert = Vertex{x: 1.0, y: 2.0, z: 3.0};
+        {
+            let vec = Vector3::from_vertex(&vert);
+            assert_eq!(vert.x, vec.x);
+            assert_eq!(vert.y, vec.y);
+            assert_eq!(vert.z, vec.z);
+        }
+        let vec = Vector3::from_vertex(vert);
+        assert_eq!(vert.x, vec.x);
+        assert_eq!(vert.y, vec.y);
+        assert_eq!(vert.z, vec.z);
     }
 
     fn bottom_floor_should_be_filled(renderer: &Renderer) {
