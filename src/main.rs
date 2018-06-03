@@ -3,7 +3,7 @@
 extern crate image;
 extern crate wavefront_obj;
 extern crate cgmath;
-extern crate image_writer;
+extern crate mini_renderer;
 extern crate rand;
 
 use std::io::prelude::*;
@@ -13,7 +13,7 @@ use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
 use cgmath::Vector3;
 use cgmath::prelude::*;
-use image_writer::{Renderer, VecFrom};
+use mini_renderer::{Renderer, VecFrom};
 use image::{Rgb, ImageRgb8};
 use rand::prelude::*;
 
