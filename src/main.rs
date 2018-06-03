@@ -1,21 +1,21 @@
 #![allow(dead_code)]
 
-extern crate image;
-extern crate wavefront_obj;
 extern crate cgmath;
+extern crate image;
 extern crate mini_renderer;
 extern crate rand;
+extern crate wavefront_obj;
 
+use cgmath::prelude::*;
+use cgmath::Vector3;
+use image::{ImageRgb8, Rgb};
+use mini_renderer::{renderer::Renderer, outside_trait_impls::VecFrom};
+use rand::prelude::*;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::fs::File;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
-use cgmath::Vector3;
-use cgmath::prelude::*;
-use mini_renderer::{Renderer, VecFrom};
-use image::{Rgb, ImageRgb8};
-use rand::prelude::*;
 
 fn main() {
     draw_obj();
@@ -39,7 +39,9 @@ fn draw_obj() {
     let light_direction = Vector3::new(0.0, 0.0, 1.0);
     for material_group in &the_mesh.geometry {
         for shape in material_group.shapes.iter() {
-            if let Primitive::Triangle((a_vert_ind, ..), (b_vert_ind, ..), (c_ind, _, ..)) = shape.primitive {
+            if let Primitive::Triangle((a_vert_ind, ..), (b_vert_ind, ..), (c_ind, _, ..)) =
+                shape.primitive
+            {
                 let vertex_a = the_mesh.vertices[a_vert_ind];
                 let vertex_b = the_mesh.vertices[b_vert_ind];
                 let vertex_c = the_mesh.vertices[c_ind];
@@ -50,7 +52,14 @@ fn draw_obj() {
                 let intensity = norm.dot(light_direction.clone());
                 if intensity > 0.0 {
                     let rgb_value = (intensity * 255.0) as u8;
-                    renderer.draw_filled_triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([rgb_value, rgb_value, rgb_value])).unwrap();
+                    renderer
+                        .draw_filled_triangle_2d(
+                            &vertex_a,
+                            &vertex_b,
+                            &vertex_c,
+                            Rgb([rgb_value, rgb_value, rgb_value]),
+                        )
+                        .unwrap();
                 }
             } else {
                 panic!("Invalid obj format (line or point detected)");
