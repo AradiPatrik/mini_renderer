@@ -35,7 +35,7 @@ fn draw_obj() {
     let the_mesh = &scene.objects[0];
     let mut renderer = Renderer::new(2500, 2500);
     renderer.clear_to_color(Rgb([50, 50, 50]));
-    let mut rng = thread_rng();
+    let mut _rng = thread_rng();
     let light_direction = Vector3::new(0.0, 0.0, 1.0);
     for material_group in &the_mesh.geometry {
         for shape in material_group.shapes.iter() {
@@ -48,7 +48,7 @@ fn draw_obj() {
                 let vec_c = Vector3::from_vertex(&vertex_c);
                 let norm = (vec_a - vec_b).cross(vec_a - vec_c).normalize();
                 let intensity = norm.dot(light_direction.clone());
-                if (intensity > 0.0) {
+                if intensity > 0.0 {
                     let rgb_value = (intensity * 255.0) as u8;
                     renderer.draw_filled_triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([rgb_value, rgb_value, rgb_value])).unwrap();
                 }

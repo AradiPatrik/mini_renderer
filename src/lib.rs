@@ -1,16 +1,16 @@
-extern crate image;
-extern crate wavefront_obj;
-extern crate num;
 extern crate cgmath;
-use image::{ImageBuffer, RgbImage, Rgb};
+extern crate image;
+extern crate num;
+extern crate wavefront_obj;
+use cgmath::{BaseNum, Point2, Vector3};
+use image::{ImageBuffer, Rgb, RgbImage};
 use std::mem;
 use wavefront_obj::obj::Vertex;
-use cgmath::{Point2, Vector3, BaseNum};
 
 #[derive(Debug, PartialEq)]
 pub enum RendererError {
     PixelOutOfImageBounds(u32, u32, Point2<u32>),
-    NotInNormalizedDeviceCoords(Vertex)
+    NotInNormalizedDeviceCoords(Vertex),
 }
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,9 @@ pub struct Renderer {
 
 impl Renderer {
     pub fn new(width: u32, height: u32) -> Self {
-        Renderer { buffer: ImageBuffer::new(width, height)}
+        Renderer {
+            buffer: ImageBuffer::new(width, height),
+        }
     }
 
     pub fn from_buffer(buffer: RgbImage) -> Self {
@@ -33,14 +35,28 @@ impl Renderer {
         }
     }
 
-    pub fn draw_triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
-        let mut drawer = TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+    pub fn draw_triangle_2d(
+        &mut self,
+        vertex_a: &Vertex,
+        vertex_b: &Vertex,
+        vertex_c: &Vertex,
+        col: Rgb<u8>,
+    ) -> Result<(), RendererError> {
+        let mut drawer =
+            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
         drawer.draw(DrawMode::Wireframe, col);
         Ok(())
     }
 
-    pub fn draw_filled_triangle_2d(&mut self, vertex_a: &Vertex, vertex_b: &Vertex, vertex_c: &Vertex, col: Rgb<u8>) -> Result<(), RendererError> {
-        let mut drawer = TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+    pub fn draw_filled_triangle_2d(
+        &mut self,
+        vertex_a: &Vertex,
+        vertex_b: &Vertex,
+        vertex_c: &Vertex,
+        col: Rgb<u8>,
+    ) -> Result<(), RendererError> {
+        let mut drawer =
+            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
         drawer.draw(DrawMode::Normal, col);
         Ok(())
     }
@@ -61,14 +77,16 @@ pub fn lerp(start: u32, end: u32, lerp_amount: f64) -> u32 {
 
 pub struct BoundingBox2<S> {
     pub lower_left: Point2<S>,
-    pub upper_right: Point2<S>
+    pub upper_right: Point2<S>,
 }
 
 impl<S: BaseNum + PartialOrd> BoundingBox2<S> {
     pub fn from_triangle2(triangle: &Triangle2<S>) -> BoundingBox2<S> {
         use std::cmp::Ordering::Less;
-        let x_coordinate_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.x.partial_cmp(&q.x).unwrap_or(Less)};
-        let y_coordiante_comparator = |p: &&&Point2<S>, q: &&&Point2<S>| {p.y.partial_cmp(&q.y).unwrap_or(Less)};
+        let x_coordinate_comparator =
+            |p: &&&Point2<S>, q: &&&Point2<S>| p.x.partial_cmp(&q.x).unwrap_or(Less);
+        let y_coordiante_comparator =
+            |p: &&&Point2<S>, q: &&&Point2<S>| p.y.partial_cmp(&q.y).unwrap_or(Less);
         let points = [&triangle.a, &triangle.b, &triangle.c];
         // It is okay to unwrap the results here because we know for a fact, that points is not an empty slice
         let min_x_point = points.iter().min_by(x_coordinate_comparator).unwrap();
@@ -77,7 +95,7 @@ impl<S: BaseNum + PartialOrd> BoundingBox2<S> {
         let max_y_point = points.iter().max_by(y_coordiante_comparator).unwrap();
         BoundingBox2 {
             lower_left: Point2::new(min_x_point.x, min_y_point.y),
-            upper_right: Point2::new(max_x_point.x, max_y_point.y)
+            upper_right: Point2::new(max_x_point.x, max_y_point.y),
         }
     }
 
@@ -101,12 +119,12 @@ impl<S: BaseNum + PartialOrd> BoundingBox2<S> {
 pub struct Triangle2<S> {
     pub a: Point2<S>,
     pub b: Point2<S>,
-    pub c: Point2<S>
+    pub c: Point2<S>,
 }
 
 impl<S: BaseNum + PartialOrd> Triangle2<S> {
     pub fn new(a: Point2<S>, b: Point2<S>, c: Point2<S>) -> Self {
-        Triangle2 {a, b, c}
+        Triangle2 { a, b, c }
     }
 
     pub fn get_bary_coords(&self, p: Point2<S>) -> Point2<f64> {
@@ -117,8 +135,10 @@ impl<S: BaseNum + PartialOrd> Triangle2<S> {
         let x_coords = Vector3::new(ab_vec.x, ac_vec.x, pa_vec.x);
         let y_coords = Vector3::new(ab_vec.y, ac_vec.y, pa_vec.y);
         let cross_product = x_coords.cross(y_coords).cast::<f64>().unwrap();
-        Point2::new(cross_product.x / cross_product.z, cross_product.y / cross_product.z)
-        
+        Point2::new(
+            cross_product.x / cross_product.z,
+            cross_product.y / cross_product.z,
+        )
     }
 
     pub fn is_inside_point(&self, p: Point2<S>) -> bool {
@@ -133,27 +153,30 @@ impl<S: BaseNum + PartialOrd> Triangle2<S> {
 
 enum DrawMode {
     Normal,
-    Wireframe
+    Wireframe,
 }
 
 struct TriangleDrawer<'a> {
     triangle: Triangle2<u32>,
-    buffer: &'a mut RgbImage
+    buffer: &'a mut RgbImage,
 }
 
 impl<'a> TriangleDrawer<'a> {
-    pub fn from_vertices(a: &Vertex, b: &Vertex, c: &Vertex, buffer: &'a mut RgbImage) -> Result<Self, RendererError> {
+    pub fn from_vertices(
+        a: &Vertex,
+        b: &Vertex,
+        c: &Vertex,
+        buffer: &'a mut RgbImage,
+    ) -> Result<Self, RendererError> {
         let mapper = VertexCoordinateMapper::new(buffer.width(), buffer.height());
-        Ok (
-            TriangleDrawer {
-                triangle: Triangle2::new (
-                    mapper.map_vertex_coords_to_pixel_coord(a)?,
-                    mapper.map_vertex_coords_to_pixel_coord(b)?,
-                    mapper.map_vertex_coords_to_pixel_coord(c)?
-                ),
-                buffer
-            }
-        )
+        Ok(TriangleDrawer {
+            triangle: Triangle2::new(
+                mapper.map_vertex_coords_to_pixel_coord(a)?,
+                mapper.map_vertex_coords_to_pixel_coord(b)?,
+                mapper.map_vertex_coords_to_pixel_coord(c)?,
+            ),
+            buffer,
+        })
     }
 
     pub fn draw(&mut self, draw_mode: DrawMode, col: Rgb<u8>) {
@@ -161,7 +184,7 @@ impl<'a> TriangleDrawer<'a> {
             DrawMode::Normal => {
                 self.draw_outline(col);
                 self.fill_triangle(col);
-            },
+            }
             DrawMode::Wireframe => {
                 self.draw_outline(col);
             }
@@ -169,15 +192,30 @@ impl<'a> TriangleDrawer<'a> {
     }
 
     fn draw_outline(&mut self, col: Rgb<u8>) {
-        LineDrawer::new(self.triangle.a.clone(), self.triangle.b.clone(), col, &mut self.buffer).draw_line();
-        LineDrawer::new(self.triangle.b.clone(), self.triangle.c.clone(), col, &mut self.buffer).draw_line();
-        LineDrawer::new(self.triangle.c.clone(), self.triangle.a.clone(), col, &mut self.buffer).draw_line();
+        LineDrawer::new(
+            self.triangle.a.clone(),
+            self.triangle.b.clone(),
+            col,
+            &mut self.buffer,
+        ).draw_line();
+        LineDrawer::new(
+            self.triangle.b.clone(),
+            self.triangle.c.clone(),
+            col,
+            &mut self.buffer,
+        ).draw_line();
+        LineDrawer::new(
+            self.triangle.c.clone(),
+            self.triangle.a.clone(),
+            col,
+            &mut self.buffer,
+        ).draw_line();
     }
 
     fn fill_triangle(&mut self, col: Rgb<u8>) {
         let bounding_box = self.triangle.get_bounding_box();
-        for x in bounding_box.min_x() ..= bounding_box.max_x() {
-            for y in bounding_box.min_y() ..= bounding_box.max_y() {
+        for x in bounding_box.min_x()..=bounding_box.max_x() {
+            for y in bounding_box.min_y()..=bounding_box.max_y() {
                 if self.triangle.is_inside_point(Point2::new(x, y).clone()) {
                     self.buffer[(x, y)] = col;
                 }
@@ -188,22 +226,23 @@ impl<'a> TriangleDrawer<'a> {
 
 struct VertexCoordinateMapper {
     buffer_width: u32,
-    buffer_height: u32
+    buffer_height: u32,
 }
 
 impl VertexCoordinateMapper {
     fn new(buffer_width: u32, buffer_height: u32) -> Self {
-        VertexCoordinateMapper { buffer_width, buffer_height }
+        VertexCoordinateMapper {
+            buffer_width,
+            buffer_height,
+        }
     }
 
     fn map_vertex_coords_to_pixel_coord(&self, v: &Vertex) -> Result<Point2<u32>, RendererError> {
         check_if_in_normalized_device_coordinates(v)?;
-        Ok (
-            Point2::new (
-                ((v.x + 1.0) * (self.buffer_width - 1) as f64 / 2.0) as u32,
-                ((v.y + 1.0) * (self.buffer_height - 1) as f64 / 2.0) as u32
-            )
-        )
+        Ok(Point2::new(
+            ((v.x + 1.0) * (self.buffer_width - 1) as f64 / 2.0) as u32,
+            ((v.y + 1.0) * (self.buffer_height - 1) as f64 / 2.0) as u32,
+        ))
     }
 }
 
@@ -224,14 +263,24 @@ struct LineDrawer<'a> {
 }
 
 impl<'a> LineDrawer<'a> {
-    pub fn new(start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+    pub fn new(
+        start: Point2<u32>,
+        end: Point2<u32>,
+        col: Rgb<u8>,
+        buffer: &'a mut RgbImage,
+    ) -> Self {
         let mut drawer = LineDrawer::create_initial_instance(start, end, col, buffer);
         drawer.make_line_shallow();
         drawer.order_points();
         drawer
     }
 
-    fn create_initial_instance(start: Point2<u32>, end: Point2<u32>, col: Rgb<u8>, buffer: &'a mut RgbImage) -> Self {
+    fn create_initial_instance(
+        start: Point2<u32>,
+        end: Point2<u32>,
+        col: Rgb<u8>,
+        buffer: &'a mut RgbImage,
+    ) -> Self {
         LineDrawer {
             start,
             end,
@@ -264,7 +313,11 @@ impl<'a> LineDrawer<'a> {
     }
 
     fn fill_next_line_point(&mut self, x: u32) {
-        let base_offset = lerp(self.start.y, self.end.y, (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64);
+        let base_offset = lerp(
+            self.start.y,
+            self.end.y,
+            (x - self.start.x) as f64 / (self.end.x - self.start.x) as f64,
+        );
         if self.is_steep {
             self.buffer[(base_offset, x)] = self.col;
         } else {
@@ -282,7 +335,7 @@ impl<'a> VecFrom<&'a Vertex> for cgmath::Vector3<f64> {
         Vector3 {
             x: vert.x,
             y: vert.y,
-            z: vert.z
+            z: vert.z,
         }
     }
 }
@@ -292,7 +345,7 @@ impl VecFrom<Vertex> for cgmath::Vector3<f64> {
         Vector3 {
             x: vert.x,
             y: vert.y,
-            z: vert.z
+            z: vert.z,
         }
     }
 }
@@ -364,7 +417,7 @@ mod test {
     #[test]
     fn should_be_able_to_clear_with_renderer() {
         let mut renderer = Renderer::new(2, 2);
-        renderer.clear_to_color(Rgb([5,5,5]));
+        renderer.clear_to_color(Rgb([5, 5, 5]));
         assert_eq!(renderer.buffer[(0, 0)], Rgb([5, 5, 5]));
         assert_eq!(renderer.buffer[(0, 1)], Rgb([5, 5, 5]));
         assert_eq!(renderer.buffer[(1, 0)], Rgb([5, 5, 5]));
@@ -396,9 +449,21 @@ mod test {
     #[test]
     fn should_be_able_to_draw_triangle() {
         let mut renderer = Renderer::new(3, 3);
-        let vertex_a = Vertex{ x: 0.0, y: 1.0, z: 0.0 };
-        let vertex_b = Vertex{ x: 1.0, y: -1.0, z: 0.0};
-        let vertex_c = Vertex{ x: -1.0, y: -1.0, z: 0.0};
+        let vertex_a = Vertex {
+            x: 0.0,
+            y: 1.0,
+            z: 0.0,
+        };
+        let vertex_b = Vertex {
+            x: 1.0,
+            y: -1.0,
+            z: 0.0,
+        };
+        let vertex_c = Vertex {
+            x: -1.0,
+            y: -1.0,
+            z: 0.0,
+        };
         let result = renderer.draw_triangle_2d(&vertex_a, &vertex_b, &vertex_c, Rgb([1, 1, 1]));
         assert_eq!(Ok(()), result);
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
@@ -423,7 +488,11 @@ mod test {
         let outside_point_right = Point2::new(16.0, 4.0);
         let outside_point_down = Point2::new(5.0, -3.0);
         let outside_point_up = Point2::new(4.0, 16.0);
-        let triangle = Triangle2::new(Point2::new(0.0, 0.0), Point2::new(10.0, 10.0), Point2::new(14.0, 0.0));
+        let triangle = Triangle2::new(
+            Point2::new(0.0, 0.0),
+            Point2::new(10.0, 10.0),
+            Point2::new(14.0, 0.0),
+        );
         assert!(triangle.is_inside_point(inside_point));
         assert!(!triangle.is_inside_point(outside_point_left));
         assert!(!triangle.is_inside_point(outside_point_right));
@@ -433,7 +502,11 @@ mod test {
 
     #[test]
     fn test_get_bounding_box() {
-        let triangle = Triangle2::new(Point2::new(0.0, 0.0), Point2::new(10.0, 10.0), Point2::new(14.0, -1.0));
+        let triangle = Triangle2::new(
+            Point2::new(0.0, 0.0),
+            Point2::new(10.0, 10.0),
+            Point2::new(14.0, -1.0),
+        );
         let bounding_box = triangle.get_bounding_box();
         assert_eq!(bounding_box.min_x(), 0.0);
         assert_eq!(bounding_box.min_y(), -1.0);
@@ -444,10 +517,27 @@ mod test {
     #[test]
     fn should_be_able_to_draw_filled_triangle_from_vertices() {
         let mut renderer = Renderer::new(4, 4);
-        let bottom_left = Vertex {x: -1.0, y: -1.0, z: 0.0};
-        let tor_right = Vertex {x: 1.0, y: 1.0, z: 0.0};
-        let bottom_right = Vertex {x: 1.0, y: -1.0, z: 0.0};
-        let result = renderer.draw_filled_triangle_2d(&bottom_left, &tor_right, &bottom_right, Rgb([1, 1, 1]));
+        let bottom_left = Vertex {
+            x: -1.0,
+            y: -1.0,
+            z: 0.0,
+        };
+        let tor_right = Vertex {
+            x: 1.0,
+            y: 1.0,
+            z: 0.0,
+        };
+        let bottom_right = Vertex {
+            x: 1.0,
+            y: -1.0,
+            z: 0.0,
+        };
+        let result = renderer.draw_filled_triangle_2d(
+            &bottom_left,
+            &tor_right,
+            &bottom_right,
+            Rgb([1, 1, 1]),
+        );
         assert_eq!(Ok(()), result);
         bottom_floor_should_be_filled(&renderer);
         right_wall_should_be_filled(&renderer);
@@ -455,10 +545,13 @@ mod test {
         middle_point_should_be_filled(&renderer);
     }
 
-
     #[test]
     fn should_be_able_to_create_vector3_from_vertex() {
-        let vert = Vertex{x: 1.0, y: 2.0, z: 3.0};
+        let vert = Vertex {
+            x: 1.0,
+            y: 2.0,
+            z: 3.0,
+        };
         {
             let vec = Vector3::from_vertex(&vert);
             assert_eq!(vert.x, vec.x);
