@@ -1,15 +1,18 @@
-use image::{Rgb, RgbImage};
+use cgmath::{Point2, Point3};
 use draw_mode::DrawMode;
-use renderer_error::RendererError;
-use wavefront_obj::obj::Vertex;
-use triangle2::Triangle2;
-use cgmath::Point2;
-use vertex_coordinate_mapper::VertexCoordinateMapper;
+use image::{Rgb, RgbImage};
 use line_drawer::LineDrawer;
+use renderer_error::RendererError;
+use triangle::Triangle;
+use vertex_coordinate_mapper::VertexCoordinateMapper;
+use wavefront_obj::obj::Vertex;
+use z_buffer::ZBuffer;
+use z_buffer::PixelVisibility;
 
 pub struct TriangleDrawer<'a> {
-    triangle: Triangle2<u32>,
+    triangle: Triangle<u32>,
     buffer: &'a mut RgbImage,
+    z_buffer: &'a mut ZBuffer,
 }
 
 impl<'a> TriangleDrawer<'a> {
@@ -18,15 +21,17 @@ impl<'a> TriangleDrawer<'a> {
         b: &Vertex,
         c: &Vertex,
         buffer: &'a mut RgbImage,
+        z_buffer: &'a mut ZBuffer,
     ) -> Result<Self, RendererError> {
         let mapper = VertexCoordinateMapper::new(buffer.width(), buffer.height());
         Ok(TriangleDrawer {
-            triangle: Triangle2::new(
-                mapper.map_vertex_coords_to_pixel_coord(a)?,
-                mapper.map_vertex_coords_to_pixel_coord(b)?,
-                mapper.map_vertex_coords_to_pixel_coord(c)?,
+            triangle: Triangle::new(
+                mapper.map_vertex_coords_to_pixel_coords(a)?,
+                mapper.map_vertex_coords_to_pixel_coords(b)?,
+                mapper.map_vertex_coords_to_pixel_coords(c)?,
             ),
             buffer,
+            z_buffer,
         })
     }
 
@@ -48,18 +53,21 @@ impl<'a> TriangleDrawer<'a> {
             self.triangle.b.clone(),
             col,
             &mut self.buffer,
+            &mut self.z_buffer,
         ).draw_line();
         LineDrawer::new(
             self.triangle.b.clone(),
             self.triangle.c.clone(),
             col,
             &mut self.buffer,
+            &mut self.z_buffer,
         ).draw_line();
         LineDrawer::new(
             self.triangle.c.clone(),
             self.triangle.a.clone(),
             col,
             &mut self.buffer,
+            &mut self.z_buffer,
         ).draw_line();
     }
 
@@ -67,8 +75,11 @@ impl<'a> TriangleDrawer<'a> {
         let bounding_box = self.triangle.get_bounding_box();
         for x in bounding_box.min_x()..=bounding_box.max_x() {
             for y in bounding_box.min_y()..=bounding_box.max_y() {
-                if self.triangle.is_inside_point(Point2::new(x, y).clone()) {
-                    self.buffer[(x, y)] = col;
+                if self.triangle.is_inside_point(Point3::new(x, y, 0).clone()) {
+                    match self.z_buffer.update_buffer(x, y, self.triangle.get_z_of_inside_point(Point2::new(x, y))).unwrap() {
+                        PixelVisibility::Visible => {self.buffer[(x, y)] = col;},
+                        PixelVisibility::Hidden => {},
+                    }
                 }
             }
         }

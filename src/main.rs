@@ -8,7 +8,7 @@ extern crate wavefront_obj;
 
 use cgmath::prelude::*;
 use cgmath::Vector3;
-use image::{ImageRgb8, Rgb};
+use image::{ImageRgb8, ImageLuma8, Rgb};
 use mini_renderer::{renderer::Renderer, outside_trait_impls::VecFrom};
 use rand::prelude::*;
 use std::fs::File;
@@ -22,9 +22,7 @@ fn main() {
 }
 
 fn write_renderer(renderer: Renderer) {
-    let mut image_buffer = ImageRgb8(renderer.unpack());
-    image_buffer = image_buffer.flipv();
-    image_buffer.as_rgb8().unwrap().save("image.png").unwrap();
+
 }
 
 fn draw_obj() {
@@ -34,7 +32,7 @@ fn draw_obj() {
     let scene = obj::parse(obj_file_text).unwrap();
     let the_mesh = &scene.objects[0];
     let mut renderer = Renderer::new(2500, 2500);
-    renderer.clear_to_color(Rgb([50, 50, 50]));
+    renderer.clear_to_color(Rgb([0, 20, 25]));
     let mut _rng = thread_rng();
     let light_direction = Vector3::new(0.0, 0.0, 1.0);
     for material_group in &the_mesh.geometry {
@@ -51,7 +49,7 @@ fn draw_obj() {
                 let norm = (vec_a - vec_b).cross(vec_a - vec_c).normalize();
                 let intensity = norm.dot(light_direction.clone());
                 if intensity > 0.0 {
-                    let rgb_value = (intensity * 255.0) as u8;
+                    let rgb_value = (intensity * 85.0) as u8;
                     renderer
                         .draw_filled_triangle_2d(
                             &vertex_a,
@@ -61,12 +59,22 @@ fn draw_obj() {
                         )
                         .unwrap();
                 }
+                renderer
+                    .draw_triangle_2d(
+                        &vertex_a,
+                        &vertex_b,
+                        &vertex_c,
+                        Rgb([230, 240, 250]),
+                    )
+                    .unwrap();
             } else {
                 panic!("Invalid obj format (line or point detected)");
             }
         }
     }
-    let mut image_buffer = ImageRgb8(renderer.unpack());
-    image_buffer = image_buffer.flipv();
+    let  (mut image_buffer, mut z_buffer) = renderer.unpack();
+    let image_buffer = ImageRgb8(image_buffer).flipv();
     image_buffer.as_rgb8().unwrap().save("image.png").unwrap();
+    let z_buffer = ImageLuma8(z_buffer.unpack()).flipv();
+    z_buffer.as_luma8().unwrap().save("image_z.png").unwrap();
 }

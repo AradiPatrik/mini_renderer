@@ -1,25 +1,32 @@
-use image::RgbImage;
-use image::Rgb;
-use image::ImageBuffer;
-use renderer_error::RendererError;
-use wavefront_obj::obj::Vertex;
 use draw_mode::DrawMode;
+use image::ImageBuffer;
+use image::Rgb;
+use image::RgbImage;
+use renderer_error::RendererError;
 use triangle_drawer::TriangleDrawer;
+use wavefront_obj::obj::Vertex;
+use z_buffer::ZBuffer;
 
 #[derive(Debug, Clone)]
 pub struct Renderer {
     buffer: RgbImage,
+    z_buffer: ZBuffer,
 }
 
 impl Renderer {
     pub fn new(width: u32, height: u32) -> Self {
         Renderer {
             buffer: ImageBuffer::new(width, height),
+            z_buffer: ZBuffer::new(width, height),
         }
     }
 
     pub fn from_buffer(buffer: RgbImage) -> Self {
-        Renderer { buffer }
+        let (width, height) = buffer.dimensions();
+        Renderer {
+            buffer,
+            z_buffer: ZBuffer::new(width, height),
+        }
     }
 
     pub fn clear_to_color(&mut self, color: Rgb<u8>) {
@@ -36,7 +43,7 @@ impl Renderer {
         col: Rgb<u8>,
     ) -> Result<(), RendererError> {
         let mut drawer =
-            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer, &mut self.z_buffer)?;
         drawer.draw(DrawMode::Wireframe, col);
         Ok(())
     }
@@ -49,7 +56,7 @@ impl Renderer {
         col: Rgb<u8>,
     ) -> Result<(), RendererError> {
         let mut drawer =
-            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer)?;
+            TriangleDrawer::from_vertices(vertex_a, vertex_b, vertex_c, &mut self.buffer, &mut self.z_buffer)?;
         drawer.draw(DrawMode::Normal, col);
         Ok(())
     }
@@ -58,14 +65,14 @@ impl Renderer {
         &self.buffer
     }
 
-    pub fn unpack(self) -> RgbImage {
-        self.buffer
+    pub fn unpack(self) -> (RgbImage, ZBuffer) {
+        (self.buffer, self.z_buffer)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{Rgb, Vertex, ImageBuffer, Renderer, RgbImage};
+    use super::{ImageBuffer, Renderer, Rgb, RgbImage, Vertex};
 
     #[test]
     fn should_be_able_to_create_renderer_from_dimensions() {
@@ -78,7 +85,7 @@ mod test {
         let _renderer = Renderer::from_buffer(image);
     }
 
-     #[test]
+    #[test]
     fn should_be_able_to_clear_with_renderer() {
         let mut renderer = Renderer::new(2, 2);
         renderer.clear_to_color(Rgb([5, 5, 5]));
@@ -168,7 +175,6 @@ mod test {
         middle_point_should_be_filled(&renderer);
     }
 
-    
 
     fn bottom_floor_should_be_filled(renderer: &Renderer) {
         assert_eq!(renderer.buffer[(0, 0)], Rgb([1, 1, 1]));
