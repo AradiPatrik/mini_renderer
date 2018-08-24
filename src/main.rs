@@ -5,6 +5,7 @@ extern crate image;
 extern crate mini_renderer;
 extern crate rand;
 extern crate wavefront_obj;
+extern crate minifb;
 
 use cgmath::prelude::*;
 use cgmath::Vector3;
@@ -16,13 +17,28 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use wavefront_obj::obj;
 use wavefront_obj::obj::Primitive;
+use minifb::{Key, WindowOptions, Window};
+
+const WIDTH: usize = 640;
+const HEIGHT: usize = 360;
 
 fn main() {
-    draw_obj();
-}
+    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
 
-fn write_renderer(renderer: Renderer) {
+    let mut window = Window::new("Test - ESC to exit",
+                                 WIDTH,
+                                 HEIGHT,
+                                 WindowOptions::default()).unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
 
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        for i in buffer.iter_mut() {
+            *i = 16711935;
+        }
+        // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
+        window.update_with_buffer(&buffer).unwrap();
+    }
 }
 
 fn draw_obj() {
@@ -74,6 +90,7 @@ fn draw_obj() {
     }
     let  (mut image_buffer, mut z_buffer) = renderer.unpack();
     let image_buffer = ImageRgb8(image_buffer).flipv();
+
     image_buffer.as_rgb8().unwrap().save("image.png").unwrap();
     let z_buffer = ImageLuma8(z_buffer.unpack()).flipv();
     z_buffer.as_luma8().unwrap().save("image_z.png").unwrap();
